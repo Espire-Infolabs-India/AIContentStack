@@ -4,9 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [template, setTemplate] = useState<string>('author');
-  const [url, setURL] = useState<string>(''); // 👈 URL input
-
+  const [template, setTemplate] = useState<string>(''); // no default selected
+  const [url, setURL] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<boolean>(false);
   const [result, setResult] = useState<any>(null);
   const [contentTypeResult, setContentTypeResult] = useState<any>(null);
@@ -45,6 +44,7 @@ export default function HomePage() {
   };
 
   const generateContent = async () => {
+    if (!template) return alert('Please select a content type.');
     if ((!selectedFile && !url.trim()) || (selectedFile && url.trim())) {
       return alert('Please provide either a PDF file or a URL, but not both.');
     }
@@ -58,7 +58,6 @@ export default function HomePage() {
       formData.append('url', url.trim());
     }
     try {
-      console.log("URL::", formData.get('url'));
       const res = await fetch(`${window?.location?.origin}/api/generate-summary`, {
         method: 'POST',
         body: formData
@@ -244,7 +243,11 @@ export default function HomePage() {
         />
       </div>
 
-      <button className="btn btn-primary" disabled={(!selectedFile && !url.trim()) || loading} onClick={generateContent}>
+      <button
+        className="btn btn-primary"
+        disabled={!template || (!selectedFile && !url.trim()) || loading}
+        onClick={generateContent}
+      >
         {loading ? 'Generating...' : (<><i className="fas fa-magic me-2"></i>Generate Content</>)}
       </button>
 

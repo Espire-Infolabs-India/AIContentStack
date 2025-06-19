@@ -1,32 +1,36 @@
 'use client';
-import { JSXElementConstructor, PromiseLikeOfReactNode, ReactElement, ReactNode, ReactPortal, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
 export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [template, setTemplate] = useState<string>('author');
-  
-  const [successMsg, setSuccessMsg] = useState<boolean>(false);
+  const [url, setURL] = useState<string>(''); // 👈 URL input
 
+  const [successMsg, setSuccessMsg] = useState<boolean>(false);
   const [result, setResult] = useState<any>(null);
   const [contentTypeResult, setContentTypeResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const res = await fetch(`${window?.location?.origin}/api/get-content-types`);
-      if (!res.ok) throw new Error('Failed to generate content');
-      const data = await res.json();
-      setContentTypeResult(data);
-    } catch (err) {
-       console.log('_____________err', err);
-    }
-  };
-
-  fetchData();
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`${window?.location?.origin}/api/get-content-types`);
+        if (!res.ok) throw new Error('Failed to generate content');
+        const data = await res.json();
+        setContentTypeResult(data);
+      } catch (err) {
+        console.log('_____________err', err);
+      }
+    };
+    fetchData();
   }, []);
 
   const handleFileSelect = (file: File) => {
+    if (url.trim()) {
+      alert("You can't upload a file when a URL is provided.");
+      return;
+    }
     if (file.type === 'application/pdf') {
       setSelectedFile(file);
     } else {
@@ -41,13 +45,20 @@ useEffect(() => {
   };
 
   const generateContent = async () => {
-    if (!selectedFile) return alert('Please select a PDF file');
+    if ((!selectedFile && !url.trim()) || (selectedFile && url.trim())) {
+      return alert('Please provide either a PDF file or a URL, but not both.');
+    }
+
     setLoading(true);
     const formData = new FormData();
-    formData.append('pdf', selectedFile);
     formData.append('template', template);
-
+    if (selectedFile) {
+      formData.append('pdf', selectedFile);
+    } else if (url.trim()) {
+      formData.append('url', url.trim());
+    }
     try {
+      console.log("URL::", formData.get('url'));
       const res = await fetch(`${window?.location?.origin}/api/generate-summary`, {
         method: 'POST',
         body: formData
@@ -101,32 +112,28 @@ useEffect(() => {
     resultContent.querySelectorAll('.json-value').forEach(field => {
       let key = field?.getAttribute('data-actualkey');
       let value = field?.innerHTML?.replace('edit', '').trim() || '';
-      if(key){
+      if (key) {
         data[key] = value;
       }
     });
+
+    if (url.trim()) {
+      data['shared_url'] = url.trim();
+    }
 
     const myHeaders = new Headers();
     myHeaders.append("authorization", "cs80aedb88ce3edf9f37ea28a7");
     myHeaders.append("api_key", "bltea636b428ce7c0cc");
     myHeaders.append("Content-Type", "application/json");
 
-    // Assuming `data` is a valid object and `template` is a string
-    const raw = JSON.stringify({
-      entry: {
-        ...data,
-      },
-    });
+    const raw = JSON.stringify({ entry: data });
 
-    const requestOptions: RequestInit = {
+    fetch(`https://api.contentstack.io/v3/content_types/${template}/entries/`, {
       method: 'POST',
       headers: myHeaders,
       body: raw,
-    };
-
-
-    fetch(`https://api.contentstack.io/v3/content_types/${template}/entries/`, requestOptions)
-      .then((response) => response.json()) // or .text() if response is plain text
+    })
+      .then((response) => response.json())
       .then((result) => {
         setSuccessMsg(true);
         console.log('final response', result)
@@ -140,7 +147,6 @@ useEffect(() => {
     if (typeof result === 'string') {
       try {
         json = JSON.parse(result);
-        //console.log('---------json',json);
       } catch (e) {
         return <div className="alert alert-warning">Invalid result format</div>;
       }
@@ -151,17 +157,17 @@ useEffect(() => {
         <h3><i className="fas fa-file-alt me-2"></i>Generated Content</h3>
         <div className="result-content">
           <div className="mb-3 border p-3">
-            {json?.map((item:any, index:any) => (
+            {json?.map((item: any, index: number) => (
               <div key={index} className="mb-4">
-                 <span className="fw-bold json-key text-capitalize">{item?.key}</span>:&nbsp;
-                  <div key={index} className="mb-2 json-field">
-                     <span className="json-value d-inline ms-2 editable" data-field={item?.key} data-actualkey={item?.actual_key}>
-                        {item?.value}
-                      </span>
-                      <button className="btn btn-sm btn-outline-primary ms-2" onClick={makeEditable}>
-                        <i className="fas fa-edit"></i>
-                      </button>
-                  </div>
+                <span className="fw-bold json-key text-capitalize">{item?.key}</span>:&nbsp;
+                <div className="mb-2 json-field">
+                  <span className="json-value d-inline ms-2 editable" data-field={item?.key} data-actualkey={item?.actual_key}>
+                    {item?.value}
+                  </span>
+                  <button className="btn btn-sm btn-outline-primary ms-2" onClick={makeEditable}>
+                    <i className="fas fa-edit"></i>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -169,9 +175,7 @@ useEffect(() => {
         <button className="btn btn-success mt-3" onClick={saveAsJSON}>
           <i className="fas fa-save me-2"></i>Publish the Content on CMS
         </button>
-        {successMsg && (
-          'SuccessFully Created Entry.'
-        )}
+        {successMsg && 'Successfully Created Entry.'}
       </div>
     );
   };
@@ -182,39 +186,68 @@ useEffect(() => {
         <h1 className="display-5">Content Generator using Document AI</h1>
         <p className="lead">Transform your PDFs into structured, customized content with our intelligent template-based generator</p>
       </header>
-          <div className="border p-4 text-center mb-4" onDrop={handleDrop} onDragOver={e => e.preventDefault()}>
-            <i className="fas fa-cloud-upload-alt fa-2x"></i>
-            <p>Drag & Drop your PDF here</p>
-            <p>or</p>
-            <button style={{background: 'black', color: '#fff'}} className="btn btn-outline-secondary" onClick={() => fileInputRef.current?.click()}>Choose File</button>
-            <input type="file" accept="application/pdf" style={{ display: 'none' }} ref={fileInputRef} onChange={e => e.target.files?.[0] && handleFileSelect(e.target.files[0])} />
-            {selectedFile && <p className="mt-2 text-muted">Selected file: {selectedFile.name}</p>}
-          </div>
 
-          <div className="mb-4">
-            <h4>Select Content Types</h4>
-            {contentTypeResult?.content_types?.map(
-              (field: { options: any; title: string; uid: string }) =>
-                field.options.is_page && (
-                  <div className="form-check" key={field.uid}>
-                    <label className="form-check-label">
-                      <input
-                        type="radio"
-                        className="form-check-input"
-                        name="template"
-                        value={field.uid}
-                        checked={template === field.uid}
-                        onChange={() => setTemplate(field.uid)}
-                      />
-                      {field.title}
-                    </label>
-                  </div>
-                )
-            )}
-          </div>
-          <button className="btn btn-primary" disabled={!selectedFile || loading} onClick={generateContent}>
-            {loading ? 'Generating...' : (<><i className="fas fa-magic me-2"></i>Generate Content</>)}
-          </button>
+      <div className="border p-4 text-center mb-4" onDrop={handleDrop} onDragOver={e => e.preventDefault()}>
+        <i className="fas fa-cloud-upload-alt fa-2x"></i>
+        <p>Drag & Drop your PDF here</p>
+        <p>or</p>
+        <button
+          className="btn btn-outline-secondary"
+          style={{ background: 'black', color: '#fff' }}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={!!url.trim()}
+        >
+          Choose File
+        </button>
+        <input
+          type="file"
+          accept="application/pdf"
+          style={{ display: 'none' }}
+          ref={fileInputRef}
+          onChange={e => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+        />
+        {selectedFile && <p className="mt-2 text-muted">Selected file: {selectedFile.name}</p>}
+      </div>
+
+      <div className="mb-4">
+        <h4>Select Content Types</h4>
+        {contentTypeResult?.content_types?.map(
+          (field: { options: any; title: string; uid: string }) =>
+            field.options.is_page && (
+              <div className="form-check" key={field.uid}>
+                <label className="form-check-label">
+                  <input
+                    type="radio"
+                    className="form-check-input"
+                    name="template"
+                    value={field.uid}
+                    checked={template === field.uid}
+                    onChange={() => setTemplate(field.uid)}
+                  />
+                  {field.title}
+                </label>
+              </div>
+            )
+        )}
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="url" className="form-label">Or share a related URL</label>
+        <input
+          type="url"
+          id="url"
+          className="form-control"
+          placeholder="https://example.com"
+          value={url}
+          disabled={!!selectedFile}
+          onChange={(e) => setURL(e.target.value)}
+        />
+      </div>
+
+      <button className="btn btn-primary" disabled={(!selectedFile && !url.trim()) || loading} onClick={generateContent}>
+        {loading ? 'Generating...' : (<><i className="fas fa-magic me-2"></i>Generate Content</>)}
+      </button>
+
       {renderResult()}
     </div>
   );

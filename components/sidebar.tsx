@@ -1,12 +1,16 @@
 import React from "react";
+import Link from "next/link";
 
 const Sidebar: React.FC = () => (
-  <div className="d-flex flex-column flex-shrink-0 p-3 bg-light" style={{ width: "280px" }}>
-    <a href="/" className="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none">
-      <svg className="bi me-2" width="40" height="32">
-        <use xlinkHref="#bootstrap" />
-      </svg>
-    </a>
+  <div>
+    <Link href="/" legacyBehavior>
+      <a className="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none">
+        <svg className="bi me-2" width="40" height="32">
+          <use xlinkHref="#bootstrap" />
+        </svg>
+      </a>
+    </Link>
+
     <hr />
     <ul className="nav nav-pills flex-column mb-auto">
       <li className="nav-item">

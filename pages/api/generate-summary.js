@@ -1,5 +1,6 @@
 import { IncomingForm } from "formidable";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import axios from "axios";
@@ -12,8 +13,12 @@ export const config = {
   },
 };
 
-const uploadsDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
+const isVercel = process.env.VERCEL === "1";
+const uploadsDir = isVercel ? "/tmp" : path.join(process.cwd(), "uploads");
+
+// Ensure uploads directory exists locally
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 async function readPDFContent(filePath) {
   const dataBuffer = fs.readFileSync(filePath);
@@ -54,7 +59,6 @@ export default async function handler(req, res) {
 
     const templateName = fields?.template;
     const selectedModel = fields?.model?.toString().toLowerCase() || "gpt-3.5-turbo";
-    console.log("Selected model:", selectedModel);
     const url = fields?.url;
     const file = Array.isArray(files.pdf) ? files.pdf[0] : files.pdf;
 
@@ -93,7 +97,7 @@ export default async function handler(req, res) {
         const filePath = file.filepath;
         const pdfContent = await readPDFContent(filePath);
         truncatedContent = pdfContent.slice(0, 30000);
-        fs.unlink(filePath, () => {}); // Cleanup
+        fs.unlink(filePath, () => {}); // Clean up uploaded file
       } else if (url) {
         truncatedContent = url;
       }
@@ -102,17 +106,17 @@ export default async function handler(req, res) {
       const promptText = Prompt?.promptText || "";
 
       const prompt = `
-        ${promptText}
+${promptText}
 
-        Instructions:
-        ${instructions.join("\n")}
+Instructions:
+${instructions.join("\n")}
 
-        Fields to generate:
-        ${JSON.stringify(templateFields, null, 2)}
+Fields to generate:
+${JSON.stringify(templateFields, null, 2)}
 
-        Document:
-        ${truncatedContent}
-      `;
+Document:
+${truncatedContent}
+`;
 
       let rawOutput = "";
 
@@ -121,7 +125,6 @@ export default async function handler(req, res) {
         const model = genAI.getGenerativeModel({ model: selectedModel });
         const result = await model.generateContent(prompt);
         rawOutput = result.response.text().replace(/^```json\n|```$/g, "").trim();
-
       } else if (selectedModel.includes("gpt")) {
         const { OpenAI } = await import("openai");
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -131,13 +134,11 @@ export default async function handler(req, res) {
           temperature: 0.7,
         });
         rawOutput = result.choices[0].message.content.replace(/^```json\n|```$/g, "").trim();
+      }
 
-      } 
-
-      let parsedTemp;
       let parsed;
       try {
-        parsedTemp = JSON.parse(rawOutput);
+        const parsedTemp = JSON.parse(rawOutput);
         const keyMap = Object.fromEntries(
           tempTemplateFields.map(({ key, value }) => [key, value])
         );

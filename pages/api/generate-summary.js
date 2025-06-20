@@ -1,9 +1,9 @@
 import { IncomingForm } from "formidable";
 import fs from "fs";
 import path from "path";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import axios from "axios";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import Prompt from "../../prompts.json";
 
 export const config = {
@@ -20,8 +20,7 @@ async function readPDFContent(filePath) {
   const options = {
     pagerender: async (pageData) => {
       const textContent = await pageData.getTextContent();
-      let lastY,
-        text = "";
+      let lastY, text = "";
       for (const item of textContent.items) {
         if (lastY === item.transform[5] || !lastY) {
           text += item.str;
@@ -54,13 +53,13 @@ export default async function handler(req, res) {
     }
 
     const templateName = fields?.template;
+    const selectedModel = fields?.model?.toString().toLowerCase() || "gpt-3.5-turbo";
+    console.log("Selected model:", selectedModel);
     const url = fields?.url;
     const file = Array.isArray(files.pdf) ? files.pdf[0] : files.pdf;
 
     if ((!file && !url) || (file && url)) {
-      return res
-        .status(400)
-        .json({ error: "Provide either a PDF or a URL, not both" });
+      return res.status(400).json({ error: "Provide either a PDF or a URL, not both" });
     }
 
     try {
@@ -74,16 +73,14 @@ export default async function handler(req, res) {
       };
 
       const response = await axios(templateConfig);
-      let schemas = response?.data?.content_type?.schema;
+      const schemas = response?.data?.content_type?.schema;
 
       let templateFields = [];
       let tempTemplateFields = [];
 
       schemas?.forEach((field) => {
         if (field?.field_metadata?.instruction) {
-          templateFields.push({
-            [field.uid]: field.field_metadata?.instruction,
-          });
+          templateFields.push({ [field.uid]: field.field_metadata?.instruction });
           tempTemplateFields.push({
             key: field.uid,
             value: field.display_name,
@@ -92,45 +89,50 @@ export default async function handler(req, res) {
       });
 
       let truncatedContent = "";
-
-      if (file && file.mimetype === "application/pdf") {
+      if (file?.mimetype === "application/pdf") {
         const filePath = file.filepath;
         const pdfContent = await readPDFContent(filePath);
         truncatedContent = pdfContent.slice(0, 30000);
-        fs.unlink(filePath, () => {}); // Clean up
+        fs.unlink(filePath, () => {}); // Cleanup
       } else if (url) {
-        try {
-          truncatedContent = url;
-        } catch (urlErr) {
-          return res.status(400).json({
-            error: "Failed to fetch or parse content from the provided URL",
-          });
-        }
+        truncatedContent = url;
       }
 
-      const instructions = Prompt?.instructions;
-      const promptText = Prompt?.promptText;
+      const instructions = Prompt?.instructions || [];
+      const promptText = Prompt?.promptText || "";
 
       const prompt = `
-         ${promptText}
+        ${promptText}
 
-         Instructions:
-         ${instructions.join("\n")}
+        Instructions:
+        ${instructions.join("\n")}
 
-         Fields to generate:
-         ${JSON.stringify(templateFields, null, 2)}
+        Fields to generate:
+        ${JSON.stringify(templateFields, null, 2)}
 
-         Document:
-         ${truncatedContent}
-       `;
+        Document:
+        ${truncatedContent}
+      `;
 
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const result = await model.generateContent(prompt);
-      const rawOutput = result.response
-        .text()
-        .replace(/^```json\n|```$/g, "")
-        .trim();
+      let rawOutput = "";
+
+      if (selectedModel.includes("gemini")) {
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: selectedModel });
+        const result = await model.generateContent(prompt);
+        rawOutput = result.response.text().replace(/^```json\n|```$/g, "").trim();
+
+      } else if (selectedModel.includes("gpt")) {
+        const { OpenAI } = await import("openai");
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const result = await openai.chat.completions.create({
+          model: selectedModel,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+        });
+        rawOutput = result.choices[0].message.content.replace(/^```json\n|```$/g, "").trim();
+
+      } 
 
       let parsedTemp;
       let parsed;
@@ -151,15 +153,16 @@ export default async function handler(req, res) {
         });
       } catch (jsonErr) {
         console.error("Failed to parse model output:", jsonErr);
-        throw new Error("Model returned invalid JSON");
+        return res.status(500).json({ error: "Model returned invalid JSON" });
       }
 
       return res.status(200).json({ summary: JSON.stringify(parsed, null, 2) });
+
     } catch (error) {
       console.error("Handler error:", error);
-      return res
-        .status(500)
-        .json({ error: error.message || "Unexpected server error" });
+      return res.status(500).json({
+        error: error.message || "Unexpected server error",
+      });
     }
   });
 }

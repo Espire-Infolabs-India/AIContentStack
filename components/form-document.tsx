@@ -1,25 +1,32 @@
-'use client';
-import { useEffect, useRef, useState } from 'react';
+"use client";
+import { useEffect, useRef, useState } from "react";
+import Settings from "./Settings";
 
 export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [template, setTemplate] = useState<string>(''); // no default selected
-  const [url, setURL] = useState<string>('');
+  const [template, setTemplate] = useState<string>(""); // no default selected
+  const [url, setURL] = useState<string>("");
   const [successMsg, setSuccessMsg] = useState<boolean>(false);
   const [result, setResult] = useState<any>(null);
   const [contentTypeResult, setContentTypeResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [aiModel, setAIModel] = useState<string>("geminine-2.0-pro");
 
+  const getAIModel = (e: React.SyntheticEvent) => {
+    setAIModel((e.target as HTMLInputElement).value);
+  };
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch(`${window?.location?.origin}/api/get-content-types`);
-        if (!res.ok) throw new Error('Failed to generate content');
+        const res = await fetch(
+          `${window?.location?.origin}/api/get-content-types`
+        );
+        if (!res.ok) throw new Error("Failed to generate content");
         const data = await res.json();
         setContentTypeResult(data);
       } catch (err) {
-        console.log('_____________err', err);
+        console.log("_____________err", err);
       }
     };
     fetchData();
@@ -30,10 +37,10 @@ export default function HomePage() {
       alert("You can't upload a file when a URL is provided.");
       return;
     }
-    if (file.type === 'application/pdf') {
+    if (file.type === "application/pdf") {
       setSelectedFile(file);
     } else {
-      alert('Please upload a PDF file');
+      alert("Please upload a PDF file");
     }
   };
 
@@ -43,31 +50,36 @@ export default function HomePage() {
     if (file) handleFileSelect(file);
   };
 
-  const generateContent = async () => {
-    if (!template) return alert('Please select a content type.');
+  const generateContent = async (e: React.SyntheticEvent) => {
+    if (!template) return alert("Please select a content type.");
     if ((!selectedFile && !url.trim()) || (selectedFile && url.trim())) {
-      return alert('Please provide either a PDF file or a URL, but not both.');
+      return alert("Please provide either a PDF file or a URL, but not both.");
     }
-
     setLoading(true);
+  console.log("AI Model Selected ::::", aiModel);
+
     const formData = new FormData();
-    formData.append('template', template);
+    formData.append("template", template);
+    formData.append("model", aiModel);
     if (selectedFile) {
-      formData.append('pdf', selectedFile);
+      formData.append("pdf", selectedFile);
     } else if (url.trim()) {
-      formData.append('url', url.trim());
+      formData.append("url", url.trim());
     }
     try {
-      const res = await fetch(`${window?.location?.origin}/api/generate-summary`, {
-        method: 'POST',
-        body: formData
-      });
-      if (!res.ok) throw new Error('Failed to generate content');
+      const res = await fetch(
+        `${window?.location?.origin}/api/generate-summary`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+      if (!res.ok) throw new Error("Failed to generate content");
       const data = await res.json();
       setResult(data.summary);
     } catch (err) {
       console.error(err);
-      alert('Error generating content.');
+      alert("Error generating content.");
     } finally {
       setLoading(false);
     }
@@ -75,15 +87,15 @@ export default function HomePage() {
 
   const makeEditable = (e: React.MouseEvent<HTMLButtonElement>) => {
     const div = e.currentTarget.parentElement as HTMLDivElement;
-    const field = div.dataset.field || '';
-    const currentValue = div.textContent?.replace('edit', '').trim() || '';
-    const textarea = document.createElement('textarea');
+    const field = div.dataset.field || "";
+    const currentValue = div.textContent?.replace("edit", "").trim() || "";
+    const textarea = document.createElement("textarea");
     textarea.value = currentValue;
     textarea.dataset.field = field;
-    div.innerHTML = '';
+    div.innerHTML = "";
     div.appendChild(textarea);
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'btn btn-sm btn-success ms-2';
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "btn btn-sm btn-success ms-2";
     saveBtn.innerHTML = '<i class="fas fa-check"></i>';
     saveBtn.onclick = () => saveEdit(saveBtn);
     div.appendChild(saveBtn);
@@ -92,32 +104,32 @@ export default function HomePage() {
 
   const saveEdit = (btn: HTMLButtonElement) => {
     const div = btn.parentElement as HTMLDivElement;
-    const textarea = div.querySelector('textarea') as HTMLTextAreaElement;
+    const textarea = div.querySelector("textarea") as HTMLTextAreaElement;
     const newValue = textarea.value;
-    const field = div.dataset.field || '';
+    const field = div.dataset.field || "";
     div.innerHTML = `${newValue}`;
-    const editBtn = document.createElement('button');
-    editBtn.className = 'btn btn-sm btn-outline-primary ms-2';
+    const editBtn = document.createElement("button");
+    editBtn.className = "btn btn-sm btn-outline-primary ms-2";
     editBtn.innerHTML = '<i class="fas fa-edit"></i>';
     editBtn.onclick = () => makeEditable({ currentTarget: editBtn } as any);
     div.appendChild(editBtn);
   };
 
   const saveAsJSON = () => {
-    const resultContent = document.querySelector('.result-content');
+    const resultContent = document.querySelector(".result-content");
     if (!resultContent) return;
 
     const data: Record<string, any> = {};
-    resultContent.querySelectorAll('.json-value').forEach(field => {
-      let key = field?.getAttribute('data-actualkey');
-      let value = field?.innerHTML?.replace('edit', '').trim() || '';
+    resultContent.querySelectorAll(".json-value").forEach((field) => {
+      let key = field?.getAttribute("data-actualkey");
+      let value = field?.innerHTML?.replace("edit", "").trim() || "";
       if (key) {
         data[key] = value;
       }
     });
 
     if (url.trim()) {
-      data['shared_url'] = url.trim();
+      data["shared_url"] = url.trim();
     }
 
     const myHeaders = new Headers();
@@ -128,22 +140,22 @@ export default function HomePage() {
     const raw = JSON.stringify({ entry: data });
 
     fetch(`https://api.contentstack.io/v3/content_types/${template}/entries/`, {
-      method: 'POST',
+      method: "POST",
       headers: myHeaders,
       body: raw,
     })
       .then((response) => response.json())
       .then((result) => {
         setSuccessMsg(true);
-        console.log('final response', result)
+        console.log("final response", result);
       })
-      .catch((error) => console.error('Fetch error:', error));
+      .catch((error) => console.error("Fetch error:", error));
   };
 
   const renderResult = () => {
     if (!result) return null;
     let json: any = result;
-    if (typeof result === 'string') {
+    if (typeof result === "string") {
       try {
         json = JSON.parse(result);
       } catch (e) {
@@ -153,17 +165,29 @@ export default function HomePage() {
 
     return (
       <div className="mt-4">
-        <h3><i className="fas fa-file-alt me-2"></i>Generated Content</h3>
+        <h3>
+          <i className="fas fa-file-alt me-2"></i>Generated Content
+        </h3>
         <div className="result-content">
           <div className="mb-3 border p-3">
             {json?.map((item: any, index: number) => (
               <div key={index} className="mb-4">
-                <span className="fw-bold json-key text-capitalize">{item?.key}</span>:&nbsp;
+                <span className="fw-bold json-key text-capitalize">
+                  {item?.key}
+                </span>
+                :&nbsp;
                 <div className="mb-2 json-field">
-                  <span className="json-value d-inline ms-2 editable" data-field={item?.key} data-actualkey={item?.actual_key}>
+                  <span
+                    className="json-value d-inline ms-2 editable"
+                    data-field={item?.key}
+                    data-actualkey={item?.actual_key}
+                  >
                     {item?.value}
                   </span>
-                  <button className="btn btn-sm btn-outline-primary ms-2" onClick={makeEditable}>
+                  <button
+                    className="btn btn-sm btn-outline-primary ms-2"
+                    onClick={makeEditable}
+                  >
                     <i className="fas fa-edit"></i>
                   </button>
                 </div>
@@ -174,7 +198,7 @@ export default function HomePage() {
         <button className="btn btn-success mt-3" onClick={saveAsJSON}>
           <i className="fas fa-save me-2"></i>Publish the Content on CMS
         </button>
-        {successMsg && 'Successfully Created Entry.'}
+        {successMsg && "Successfully Created Entry."}
       </div>
     );
   };
@@ -183,16 +207,25 @@ export default function HomePage() {
     <div className="container py-5">
       <header className="mb-4">
         <h1 className="display-5">Content Generator using Document AI</h1>
-        <p className="lead">Transform your PDFs into structured, customized content with our intelligent template-based generator</p>
+        <p className="lead">
+          Transform your PDFs into structured, customized content with our
+          intelligent template-based generator
+        </p>
       </header>
 
-      <div className="border p-4 text-center mb-4" onDrop={handleDrop} onDragOver={e => e.preventDefault()}>
+      <Settings model={aiModel} setAIModel={getAIModel} />
+
+      <div
+        className="border p-4 text-center mb-4"
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+      >
         <i className="fas fa-cloud-upload-alt fa-2x"></i>
         <p>Drag & Drop your PDF here</p>
         <p>or</p>
         <button
           className="btn btn-outline-secondary"
-          style={{ background: 'black', color: '#fff' }}
+          style={{ background: "black", color: "#fff" }}
           onClick={() => fileInputRef.current?.click()}
           disabled={!!url.trim()}
         >
@@ -201,11 +234,15 @@ export default function HomePage() {
         <input
           type="file"
           accept="application/pdf"
-          style={{ display: 'none' }}
+          style={{ display: "none" }}
           ref={fileInputRef}
-          onChange={e => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+          onChange={(e) =>
+            e.target.files?.[0] && handleFileSelect(e.target.files[0])
+          }
         />
-        {selectedFile && <p className="mt-2 text-muted">Selected file: {selectedFile.name}</p>}
+        {selectedFile && (
+          <p className="mt-2 text-muted">Selected file: {selectedFile.name}</p>
+        )}
       </div>
 
       <div className="mb-4">
@@ -231,7 +268,9 @@ export default function HomePage() {
       </div>
 
       <div className="mb-4">
-        <label htmlFor="url" className="form-label">Or share a related URL</label>
+        <label htmlFor="url" className="form-label">
+          Or share a related URL
+        </label>
         <input
           type="url"
           id="url"
@@ -248,7 +287,13 @@ export default function HomePage() {
         disabled={!template || (!selectedFile && !url.trim()) || loading}
         onClick={generateContent}
       >
-        {loading ? 'Generating...' : (<><i className="fas fa-magic me-2"></i>Generate Content</>)}
+        {loading ? (
+          "Generating..."
+        ) : (
+          <>
+            <i className="fas fa-magic me-2"></i>Generate Content
+          </>
+        )}
       </button>
 
       {renderResult()}

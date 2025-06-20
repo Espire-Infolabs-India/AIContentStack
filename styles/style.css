@@ -1352,3 +1352,7 @@ footer a {
 .string-value {
   color: #5d9ccb;
 }
+
+.modal-body {
+  z-index: 100;
+}

@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
   FormEvent,
-  ChangeEvent,
 } from 'react';
 import axios from 'axios';
 
@@ -12,11 +11,14 @@ interface FormField {
   name: string;
   value: string;
 }
+"use client";
+import Settings from "./Settings";
 
 export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [template, setTemplate] = useState<string>('author');
+  const [url, setURL] = useState<string>("");
   const [successMsg, setSuccessMsg] = useState<boolean>(false);
   const [result, setResult] = useState<any>(null);
   const [referenceFields, setReferenceFields] = useState<any>(null);
@@ -25,6 +27,7 @@ export default function HomePage() {
   const [files, setFiles] = useState<File[]>([]);
   const [contentTypeResult, setContentTypeResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [aiModel, setAIModel] = useState<string>("gemini-2.0-flash");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,16 +38,34 @@ export default function HomePage() {
         setContentTypeResult(data);
       } catch (err) {
         console.error('Fetch error:', err);
+        const getAIModel = (e: React.SyntheticEvent) => {
+        setAIModel((e.target as HTMLInputElement).value);
+    };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(
+          `${window?.location?.origin}/api/get-content-types`
+        );
+        if (!res.ok) throw new Error("Failed to generate content");
+        const data = await res.json();
+        setContentTypeResult(data);
+      } catch (err) {
+        console.log("_____________err", err);
       }
     };
     fetchData();
   }, []);
 
   const handleFileSelect = (file: File) => {
-    if (file.type === 'application/pdf') {
+    if (url.trim()) {
+      alert("You can't upload a file when a URL is provided.");
+      return;
+    }
+    if (file.type === "application/pdf") {
       setSelectedFile(file);
     } else {
-      alert('Please upload a PDF file');
+      alert("Please upload a PDF file");
     }
   };
 
@@ -54,37 +75,42 @@ export default function HomePage() {
     if (file) handleFileSelect(file);
   };
 
-  const generateContent = async () => {
-    if (!selectedFile) return alert('Please select a PDF file');
+  const generateContent = async (e: React.SyntheticEvent) => {
+    if (!template) return alert("Please select a content type.");
+    if ((!selectedFile && !url.trim()) || (selectedFile && url.trim())) {
+      return alert("Please provide either a PDF file or a URL, but not both.");
+    }
     setLoading(true);
-    const formData = new FormData();
-    formData.append('pdf', selectedFile);
-    formData.append('template', template);
+  console.log("AI Model Selected ::::", aiModel);
 
+    const formData = new FormData();
+    formData.append("template", template);
+    formData.append("model", aiModel);
+    if (selectedFile) {
+      formData.append("pdf", selectedFile);
+    } else if (url.trim()) {
+      formData.append("url", url.trim());
+    }
     try {
-      const res = await fetch(`${window?.location?.origin}/api/generate-summary`, {
-        method: 'POST',
-        body: formData
-      });
-      if (!res.ok) throw new Error('Failed to generate content');
+      const res = await fetch(
+        `${window?.location?.origin}/api/generate-summary`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+      if (!res.ok) throw new Error("Failed to generate content");
       const data = await res.json();
       setResult(data?.summary);
       setReferenceFields(data?.referenceFields);
       setFileFieldList(data?.fileFieldList);
     } catch (err) {
       console.error(err);
-      alert('Error generating content.');
+      alert("Error generating content.");
     } finally {
       setLoading(false);
     }
   };
-
-  // const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-  //   const input = e.target as HTMLInputElement;
-  //   if (input.files) {
-  //     setFiles(Array.from(input.files));
-  //   }
-  // };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLoading(true);
@@ -194,7 +220,7 @@ export default function HomePage() {
   const renderResult = () => {
     if (!result) return null;
     let json: any = result;
-    if (typeof result === 'string') {
+    if (typeof result === "string") {
       try {
         json = JSON.parse(result);
       } catch {
@@ -266,28 +292,42 @@ export default function HomePage() {
     <div className="container py-5">
       <header className="mb-4">
         <h1 className="display-5">Content Generator using Document AI</h1>
-        <p className="lead">Transform your PDFs into structured, customized content with our intelligent template-based generator</p>
+        <p className="lead">
+          Transform your PDFs into structured, customized content with our
+          intelligent template-based generator
+        </p>
       </header>
 
-      <div className="border p-4 text-center mb-4" onDrop={handleDrop} onDragOver={e => e.preventDefault()}>
+      <Settings model={aiModel} setAIModel={getAIModel} />
+
+      <div
+        className="border p-4 text-center mb-4"
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+      >
         <i className="fas fa-cloud-upload-alt fa-2x"></i>
         <p>Drag & Drop your PDF here</p>
         <p>or</p>
         <button
-          style={{ background: 'black', color: '#fff' }}
           className="btn btn-outline-secondary"
+          style={{ background: "black", color: "#fff" }}
           onClick={() => fileInputRef.current?.click()}
+          disabled={!!url.trim()}
         >
           Choose File
         </button>
         <input
           type="file"
           accept="application/pdf"
-          style={{ display: 'none' }}
+          style={{ display: "none" }}
           ref={fileInputRef}
-          onChange={e => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+          onChange={(e) =>
+            e.target.files?.[0] && handleFileSelect(e.target.files[0])
+          }
         />
-        {selectedFile && <p className="mt-2 text-muted">Selected file: {selectedFile.name}</p>}
+        {selectedFile && (
+          <p className="mt-2 text-muted">Selected file: {selectedFile.name}</p>
+        )}
       </div>
 
       <div className="mb-4">

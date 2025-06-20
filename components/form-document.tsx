@@ -11,7 +11,7 @@ export default function HomePage() {
   const [result, setResult] = useState<any>(null);
   const [contentTypeResult, setContentTypeResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [aiModel, setAIModel] = useState<string>("geminine-2.0-pro");
+  const [aiModel, setAIModel] = useState<string>("gemini-2.0-flash");
 
   const getAIModel = (e: React.SyntheticEvent) => {
     setAIModel((e.target as HTMLInputElement).value);

@@ -33,7 +33,7 @@ const Settings: React.FC<SettingsProps> = ({ model, setAIModel }) => {
                 onChange={(e) => setAIModel(e)}
                 className="w-full p-2 rounded bg-gray-700 text-white"
               >
-                <option value="gemini-2.0-pro">Gemini 2.0 Pro</option>
+                <option value="gemini-2.0-flash">Gemini 2.0 Pro</option>
                 <option value="claude-3-opus">Claude 3 Opus</option>
                 <option value="gpt-4-turbo">GPT-4 Turbo</option>
               </select>

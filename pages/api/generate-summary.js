@@ -68,38 +68,46 @@ export default async function handler(req, res) {
         };
 
         const response = await axios(templateConfig);
-        //const heading = response?.data?.content_type?.title;
         let schemas = response?.data?.content_type?.schema;
         
-        //let refrerenceFields =  schemas?.filter((field => field?.reference_to));
-        //let normalFields = schemas?.forEach((field => !field?.reference_to));
+        let refrerenceFieldsList = [];
+        let getReferenceFieldsAsync = (async(entryName, displayName) => {
+            let getEntries = await fetch(`${process?.env?.BASE_URL}/api/get-content-entries/?content_name=${entryName}`);
+            let getEntriesData = await getEntries.json();
+            if(getEntriesData){
+              refrerenceFieldsList.push({displayName: displayName, key: entryName, values: getEntriesData?.entries});
+            }
+        });
         
+        await Promise.all(schemas?.map(async (field) => {
+          if(field?.reference_to && field?.data_type == "reference"){
+            let entryName = field?.reference_to[0];
+            let displayName = field?.display_name;
+            return await getReferenceFieldsAsync(entryName, displayName);
+          }
+        }));
 
+        let fileFieldList = [];
         let templateFields = [];
         schemas?.forEach((field) => {
-          if (field?.field_metadata?.instruction) {
+          if (field?.field_metadata?.instruction && field?.data_type == "text" && field?.display_type != "dropdown") {
             templateFields.push({
               [field.uid]: field.field_metadata?.instruction,
             });
+          }else if(field?.data_type == "file"){
+            fileFieldList.push({displayName: field?.display_name, actual_key: field?.uid});
           }
         });
         
-        
-        
         let tempTemplateFields = [];
         schemas?.forEach((field) => {
-          if (field?.field_metadata?.instruction) {
+          if (field?.field_metadata?.instruction && field?.data_type == "text") {
             tempTemplateFields.push({
               key: field.uid,
               value: field.display_name,
             });
           }
         });
-
-        // let entryName = 'author';
-        // let getEntries = await fetch(`/api/get-content-entries/${entryName}`);
-        // let getEntriesData = await getEntries.json();
-        // console.log('--------getEntriesData Category Data---------',getEntriesData);
 
         const pdfContent = await readPDFContent(filePath);
         const truncatedContent = pdfContent.slice(0, 30000); // Limit for LLM input
@@ -120,6 +128,8 @@ export default async function handler(req, res) {
           ${truncatedContent}
         `;
 
+        
+
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
         const result = await model.generateContent(prompt);
@@ -127,11 +137,12 @@ export default async function handler(req, res) {
 
         let parsedTemp;
         let parsed;
+
         try {
           parsedTemp = JSON.parse(rawOutput);
-          const keyMap = Object.fromEntries(tempTemplateFields.map(({ key, value }) => [key, value]));
+          const keyMap = Object.fromEntries(tempTemplateFields?.map(({ key, value }) => [key, value]));
 
-          const transformedArray = parsedTemp.map(obj => {
+          const transformedArray = parsedTemp?.map(obj => {
             const [oldKey] = Object.keys(obj);
             const newKey = keyMap[oldKey] || oldKey;
             return { [newKey]: obj[oldKey], actual_key: oldKey, "key": newKey ,"value": obj[oldKey]};
@@ -148,7 +159,7 @@ export default async function handler(req, res) {
         //   parsed.PostedBy = 'Espire Infolabs Team';
         // }
 
-        res.status(200).json({ summary: JSON.stringify(parsed, null, 2) });
+        res.status(200).json({"referenceFields": refrerenceFieldsList, "fileFieldList": fileFieldList, "summary": JSON.stringify(parsed, null, 2) });
 
     } catch (error) {
       console.error('Handler error:', error);

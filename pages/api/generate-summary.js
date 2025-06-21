@@ -79,18 +79,44 @@ export default async function handler(req, res) {
       const response = await axios(templateConfig);
       const schemas = response?.data?.content_type?.schema;
 
-      let templateFields = [];
-      let tempTemplateFields = [];
+      let refrerenceFieldsList = [];
+        let getReferenceFieldsAsync = (async(entryName, displayName) => {
+            let getEntries = await fetch(`${process?.env?.BASE_URL}/api/get-content-entries/?content_name=${entryName}`);
+            let getEntriesData = await getEntries.json();
+            if(getEntriesData){
+              refrerenceFieldsList.push({displayName: displayName, key: entryName, values: getEntriesData?.entries});
+            }
+        });
+        
+        await Promise.all(schemas?.map(async (field) => {
+          if(field?.reference_to && field?.data_type == "reference"){
+            let entryName = field?.reference_to[0];
+            let displayName = field?.display_name;
+            return await getReferenceFieldsAsync(entryName, displayName);
+          }
+        }));
 
-      schemas?.forEach((field) => {
-        if (field?.field_metadata?.instruction) {
-          templateFields.push({ [field.uid]: field.field_metadata?.instruction });
-          tempTemplateFields.push({
-            key: field.uid,
-            value: field.display_name,
-          });
-        }
-      });
+        let fileFieldList = [];
+        let templateFields = [];
+        schemas?.forEach((field) => {
+          if (field?.field_metadata?.instruction && field?.data_type == "text" && field?.display_type != "dropdown") {
+            templateFields.push({
+              [field.uid]: field.field_metadata?.instruction,
+            });
+          }else if(field?.data_type == "file"){
+            fileFieldList.push({displayName: field?.display_name, actual_key: field?.uid});
+          }
+        });
+        
+        let tempTemplateFields = [];
+        schemas?.forEach((field) => {
+          if (field?.field_metadata?.instruction && field?.data_type == "text") {
+            tempTemplateFields.push({
+              key: field.uid,
+              value: field.display_name,
+            });
+          }
+        });
 
       let truncatedContent = "";
       if (file?.mimetype === "application/pdf") {
@@ -139,10 +165,11 @@ ${truncatedContent}
       let parsed;
       try {
         const parsedTemp = JSON.parse(rawOutput);
+        console.log('--------parsedTemp',parsedTemp);
         const keyMap = Object.fromEntries(
           tempTemplateFields.map(({ key, value }) => [key, value])
         );
-        parsed = parsedTemp.map((obj) => {
+        parsed = parsedTemp?.map((obj) => {
           const [oldKey] = Object.keys(obj);
           const newKey = keyMap[oldKey] || oldKey;
           return {

@@ -1,4 +1,5 @@
 'use client';
+
 import {
   useEffect,
   useRef,
@@ -6,28 +7,29 @@ import {
   FormEvent,
 } from 'react';
 import axios from 'axios';
+import Settings from "./Settings";
 
 interface FormField {
   name: string;
   value: string;
 }
-"use client";
-import Settings from "./Settings";
 
 export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [template, setTemplate] = useState<string>('author');
-  const [url, setURL] = useState<string>("");
+  const [url, setURL] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<boolean>(false);
   const [result, setResult] = useState<any>(null);
   const [referenceFields, setReferenceFields] = useState<any>(null);
   const [fileFieldList, setFileFieldList] = useState<any>(null);
-  const [formFields, setFormFields] = useState<FormField[]>([{ name: '', value: '' }]);
-  const [files, setFiles] = useState<File[]>([]);
   const [contentTypeResult, setContentTypeResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [aiModel, setAIModel] = useState<string>("gemini-2.0-flash");
+  const [aiModel, setAIModel] = useState<string>('gemini-2.0-flash');
+
+  const getAIModel = (e: React.SyntheticEvent) => {
+    setAIModel((e.target as HTMLInputElement).value);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,22 +40,9 @@ export default function HomePage() {
         setContentTypeResult(data);
       } catch (err) {
         console.error('Fetch error:', err);
-        const getAIModel = (e: React.SyntheticEvent) => {
-        setAIModel((e.target as HTMLInputElement).value);
-    };
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch(
-          `${window?.location?.origin}/api/get-content-types`
-        );
-        if (!res.ok) throw new Error("Failed to generate content");
-        const data = await res.json();
-        setContentTypeResult(data);
-      } catch (err) {
-        console.log("_____________err", err);
       }
     };
+
     fetchData();
   }, []);
 
@@ -62,10 +51,10 @@ export default function HomePage() {
       alert("You can't upload a file when a URL is provided.");
       return;
     }
-    if (file.type === "application/pdf") {
+    if (file.type === 'application/pdf') {
       setSelectedFile(file);
     } else {
-      alert("Please upload a PDF file");
+      alert('Please upload a PDF file');
     }
   };
 
@@ -76,37 +65,34 @@ export default function HomePage() {
   };
 
   const generateContent = async (e: React.SyntheticEvent) => {
-    if (!template) return alert("Please select a content type.");
+    if (!template) return alert('Please select a content type.');
     if ((!selectedFile && !url.trim()) || (selectedFile && url.trim())) {
-      return alert("Please provide either a PDF file or a URL, but not both.");
+      return alert('Please provide either a PDF file or a URL, but not both.');
     }
     setLoading(true);
-  console.log("AI Model Selected ::::", aiModel);
 
     const formData = new FormData();
-    formData.append("template", template);
-    formData.append("model", aiModel);
+    formData.append('template', template);
+    formData.append('model', aiModel);
     if (selectedFile) {
-      formData.append("pdf", selectedFile);
+      formData.append('pdf', selectedFile);
     } else if (url.trim()) {
-      formData.append("url", url.trim());
+      formData.append('url', url.trim());
     }
+
     try {
-      const res = await fetch(
-        `${window?.location?.origin}/api/generate-summary`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-      if (!res.ok) throw new Error("Failed to generate content");
+      const res = await fetch(`${window?.location?.origin}/api/generate-summary`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Failed to generate content');
       const data = await res.json();
       setResult(data?.summary);
       setReferenceFields(data?.referenceFields);
       setFileFieldList(data?.fileFieldList);
     } catch (err) {
       console.error(err);
-      alert("Error generating content.");
+      alert('Error generating content.');
     } finally {
       setLoading(false);
     }
@@ -114,8 +100,8 @@ export default function HomePage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLoading(true);
-    let input = e.target as HTMLInputElement;
-    let inputId = input.id;
+    const input = e.target as HTMLInputElement;
+    const inputId = input.id;
     const file = e.target.files?.[0];
 
     if (file) {
@@ -138,7 +124,7 @@ export default function HomePage() {
       });
 
       const uploaded = response.data.asset;
-      const inputEl = document.getElementById(inputId+`_file`);
+      const inputEl = document.getElementById(`${inputId}_file`);
 
       if (inputEl && 'value' in inputEl) {
         (inputEl as HTMLInputElement).value = uploaded.uid;
@@ -149,68 +135,40 @@ export default function HomePage() {
     }
   };
 
-
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fileInputFields = document.querySelectorAll<HTMLInputElement>('.form-file-input');
 
     try {
-        // Append dynamic form fields
-        e.preventDefault();
-        const data: Record<string, any> = {};
+      const data: Record<string, any> = {};
 
-        const textareas = document.querySelectorAll<HTMLTextAreaElement>('.form-textarea');
-        textareas.forEach((textarea) => {
-          if (textarea.name && textarea.value) {
-           Object.assign(data, { [textarea.name]: textarea.value });
-          }  
-        });
+      const textareas = document.querySelectorAll<HTMLTextAreaElement>('.form-textarea');
+      textareas.forEach((textarea) => {
+        if (textarea.name && textarea.value) {
+          Object.assign(data, { [textarea.name]: textarea.value });
+        }
+      });
 
-        // const formDropdown = document.querySelectorAll<HTMLSelectElement>('.form-dropdown');
-        // formDropdown.forEach((selectDropdown) => {
-        //   if (selectDropdown.name && selectDropdown.value) {
-        //     Object.assign(data, { [selectDropdown.name]: selectDropdown.value });
-        //   } 
-        // });
+      const myHeaders = new Headers();
+      myHeaders.append('authorization', process.env.AUTHORIZATION as string);
+      myHeaders.append('api_key', process.env.API_KEY as string);
+      myHeaders.append('Content-Type', 'application/json');
 
-        // const inputFields = document.querySelectorAll<HTMLSelectElement>('.input_file_field');
-        // inputFields.forEach((field) => {
-        //   if (field.name && field.value) {
-        //     Object.assign(data, { [field.name]: field.value });
-        //   }  
-        // });
+      const raw = JSON.stringify({ entry: { ...data } });
 
-        console.log('data', data);
-        
-        
-        const myHeaders = new Headers();
-        myHeaders.append("authorization", process.env.AUTHORIZATION as string);
-        myHeaders.append("api_key", process.env.API_KEY as string);
-        myHeaders.append("Content-Type", "application/json");
+      const requestOptions: RequestInit = {
+        method: 'POST',
+        headers: myHeaders,
+        body: raw,
+      };
 
-        const raw = JSON.stringify({
-          entry: {
-            ...data,
-          },
-        });
+      const response = await fetch(
+        `https://api.contentstack.io/v3/content_types/${template}/entries/`,
+        requestOptions
+      );
 
-        const requestOptions: RequestInit = {
-          method: 'POST',
-          headers: myHeaders,
-          body: raw,
-        };
-
-
-        fetch(`https://api.contentstack.io/v3/content_types/${template}/entries/`, requestOptions)
-          .then((response) => response.json()) // or .text() if response is plain text
-          .then((result) => {
-            setSuccessMsg(true);
-            console.log('final response', result)
-          })
-          .catch((error) => console.error('Fetch error:', error));
-  
-
-        setSuccessMsg(true);
+      const result = await response.json();
+      setSuccessMsg(true);
+      console.log('final response', result);
     } catch (err) {
       console.error('Upload error:', err);
       alert('One or more uploads failed.');
@@ -219,8 +177,9 @@ export default function HomePage() {
 
   const renderResult = () => {
     if (!result) return null;
+
     let json: any = result;
-    if (typeof result === "string") {
+    if (typeof result === 'string') {
       try {
         json = JSON.parse(result);
       } catch {
@@ -231,16 +190,20 @@ export default function HomePage() {
     return (
       <div className="mt-4">
         <form encType="multipart/form-data" method="post" onSubmit={handleSubmit}>
-          <h3><i className="fas fa-file-alt me-2"></i>Generated Content</h3>
+          <h3>
+            <i className="fas fa-file-alt me-2"></i>Generated Content
+          </h3>
           <div className="mb-3 border p-3">
             {json?.map((item: any, index: number) => (
               <div key={item?.actual_key || index} className="mb-4">
-                <label htmlFor={item?.actual_key}><strong>{item?.key}</strong></label>
+                <label htmlFor={item?.actual_key}>
+                  <strong>{item?.key}</strong>
+                </label>
                 <textarea
                   className="form-control form-textarea"
                   id={item?.actual_key}
                   name={item?.actual_key}
-                  defaultValue={item?.value || ""}
+                  defaultValue={item?.value || ''}
                 />
               </div>
             ))}
@@ -249,16 +212,22 @@ export default function HomePage() {
           <div>
             {fileFieldList?.map((item: any, index: number) => (
               <div key={index} className="mb-4">
-                <label><strong>{item?.displayName}</strong></label>
+                <label>
+                  <strong>{item?.displayName}</strong>
+                </label>
                 <input
                   type="file"
                   className="form-control form-file-input"
-                  id={item?.actual_key+`_input`}
+                  id={`${item?.actual_key}_input`}
                   name={item?.actual_key}
                   onChange={handleFileChange}
                 />
-                <input type="hidden" className='input_file_field form-textarea' name={item?.actual_key} id={item?.actual_key+`_input_file`} />
-
+                <input
+                  type="hidden"
+                  className="input_file_field form-textarea"
+                  name={item?.actual_key}
+                  id={`${item?.actual_key}_input_file`}
+                />
               </div>
             ))}
           </div>
@@ -266,13 +235,17 @@ export default function HomePage() {
           <div>
             {referenceFields?.map((item: any, index: number) => (
               <div key={index} className="mb-4">
-                <label><strong>{item?.displayName}</strong></label>
+                <label>
+                  <strong>{item?.displayName}</strong>
+                </label>
                 <select name={item?.key} className="form-select form-dropdown form-textarea">
                   <option value="">Choose...</option>
                   {item?.values?.map((ele: any, ind: number) =>
-                    ele?.title && (
-                      <option key={ind} value={ele?.uid}>{ele?.title}</option>
-                    )
+                    ele?.title ? (
+                      <option key={ind} value={ele?.uid}>
+                        {ele?.title}
+                      </option>
+                    ) : null
                   )}
                 </select>
               </div>
@@ -283,12 +256,14 @@ export default function HomePage() {
             <i className="fas fa-magic me-2"></i>Publish to CMS
           </button>
         </form>
-        {successMsg && <div className="alert alert-success mt-3">Successfully Created Entry.</div>}
+        {successMsg && (
+          <div className="alert alert-success mt-3">Successfully Created Entry.</div>
+        )}
       </div>
     );
   };
 
-  return (
+   return (
     <div className="container py-5">
       <header className="mb-4">
         <h1 className="display-5">Content Generator using Document AI</h1>
@@ -332,27 +307,53 @@ export default function HomePage() {
 
       <div className="mb-4">
         <h4>Select Content Types</h4>
-        {contentTypeResult?.content_types?.map((field: any) =>
-          field.options.is_page && (
-            <div className="form-check" key={field.uid}>
-              <label className="form-check-label">
-                <input
-                  type="radio"
-                  className="form-check-input"
-                  name="template"
-                  value={field.uid}
-                  checked={template === field.uid}
-                  onChange={() => setTemplate(field.uid)}
-                />
-                {field.title}
-              </label>
-            </div>
-          )
+        {contentTypeResult?.content_types?.map(
+          (field: { options: any; title: string; uid: string }) =>
+            field.options.is_page && (
+              <div className="form-check" key={field.uid}>
+                <label className="form-check-label">
+                  <input
+                    type="radio"
+                    className="form-check-input"
+                    name="template"
+                    value={field.uid}
+                    checked={template === field.uid}
+                    onChange={() => setTemplate(field.uid)}
+                  />
+                  {field.title}
+                </label>
+              </div>
+            )
         )}
       </div>
 
-      <button className="btn btn-primary" disabled={!selectedFile || loading} onClick={generateContent}>
-        {loading ? 'Generating...' : (<><i className="fas fa-magic me-2"></i>Generate Content</>)}
+      <div className="mb-4">
+        <label htmlFor="url" className="form-label">
+          Or share a related URL
+        </label>
+        <input
+          type="url"
+          id="url"
+          className="form-control"
+          placeholder="https://example.com"
+          value={url}
+          disabled={!!selectedFile}
+          onChange={(e) => setURL(e.target.value)}
+        />
+      </div>
+
+      <button
+        className="btn btn-primary"
+        disabled={!template || (!selectedFile && !url.trim()) || loading}
+        onClick={generateContent}
+      >
+        {loading ? (
+          "Generating..."
+        ) : (
+          <>
+            <i className="fas fa-magic me-2"></i>Generate Content
+          </>
+        )}
       </button>
 
       {renderResult()}

@@ -3,6 +3,19 @@ const withPWA = require("next-pwa")({
 });
 
 const config = {
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Prevent fs module from being bundled client-side
+      config.resolve.fallback = {
+        fs: false,
+      };
+    }
+    return config;
+  },
+  env:{
+    AUTHORIZATION: process.env.AUTHORIZATION,
+    API_KEY: process.env.API_KEY,
+  },
   images: {
     domains: ["www.netgear.com", "downloads1.netgear.com", "images.contentstack.io"],
   },
@@ -28,6 +41,7 @@ const config = {
     NEXT_PUBLIC_ACCESS_TOKEN: process.env.NEXT_PUBLIC_ACCESS_TOKEN,
     HEADER_API_KEY: process.env.HEADER_API_KEY,
     HEADER_ACCESS_TOKEN: process.env.HEADER_ACCESS_TOKEN,
+    
   },
   experimental: { largePageDataBytes: 128 * 100000 },
 };

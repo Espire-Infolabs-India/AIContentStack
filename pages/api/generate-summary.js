@@ -157,7 +157,7 @@ ${truncatedContent}
         return res.status(500).json({ error: "Model returned invalid JSON" });
       }
 
-      return res.status(200).json({ summary: JSON.stringify(parsed, null, 2) });
+        res.status(200).json({"referenceFields": refrerenceFieldsList, "fileFieldList": fileFieldList, "summary": JSON.stringify(parsed, null, 2) });
 
     } catch (error) {
       console.error("Handler error:", error);

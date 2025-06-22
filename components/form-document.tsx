@@ -135,10 +135,9 @@ export default function HomePage() {
     }
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     try {
+      setLoading(true);
       const data: Record<string, any> = {};
 
       const textareas = document.querySelectorAll<HTMLTextAreaElement>('.form-textarea');
@@ -169,9 +168,12 @@ export default function HomePage() {
       const result = await response.json();
       setSuccessMsg(true);
       console.log('final response', result);
+      setLoading(false);
     } catch (err) {
       console.error('Upload error:', err);
       alert('One or more uploads failed.');
+      setLoading(false);
+      setSuccessMsg(false);
     }
   };
 
@@ -189,7 +191,7 @@ export default function HomePage() {
 
     return (
       <div className="mt-4">
-        <form encType="multipart/form-data" method="post" onSubmit={handleSubmit}>
+        <form encType="multipart/form-data" method="post" >
           <h3>
             <i className="fas fa-file-alt me-2"></i>Generated Content
           </h3>
@@ -252,7 +254,7 @@ export default function HomePage() {
             ))}
           </div>
 
-          <button className="btn btn-success mt-3" disabled={loading}>
+          <button className="btn btn-success mt-3" onClick={handleSubmit} disabled={loading}>
             <i className="fas fa-magic me-2"></i>Publish to CMS
           </button>
         </form>

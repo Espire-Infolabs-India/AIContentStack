@@ -147,6 +147,13 @@ export default function HomePage() {
         }
       });
 
+      const formDropdown = document.querySelectorAll<HTMLTextAreaElement>('.form-dropdown');
+      formDropdown?.forEach((dropdown) => {
+        if (dropdown?.name && dropdown?.value) {
+          Object.assign(data, { [dropdown?.name]: [{"uid": dropdown?.value, "_content_type_uid": dropdown?.id}] });
+        }
+      });
+
       const myHeaders = new Headers();
       myHeaders.append('authorization', process.env.AUTHORIZATION as string);
       myHeaders.append('api_key', process.env.API_KEY as string);
@@ -167,7 +174,6 @@ export default function HomePage() {
 
       const result = await response.json();
       setSuccessMsg(true);
-      console.log('final response', result);
       setLoading(false);
     } catch (err) {
       console.error('Upload error:', err);
@@ -240,7 +246,7 @@ export default function HomePage() {
                 <label>
                   <strong>{item?.displayName}</strong>
                 </label>
-                <select name={item?.key} className="form-select form-dropdown form-textarea">
+                <select name={item?.actual_uid} id={item?.key} className="form-select form-dropdown form-textarea1">
                   <option value="">Choose...</option>
                   {item?.values?.map((ele: any, ind: number) =>
                     ele?.title ? (

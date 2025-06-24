@@ -135,17 +135,17 @@ export default async function handler(req, res) {
       const promptText = Prompt?.promptText || "";
 
       const prompt = `
-${promptText}
+        ${promptText}
 
-Instructions:
-${instructions.join("\n")}
+        Instructions:
+        ${instructions.join("\n")}
 
-Fields to generate:
-${JSON.stringify(templateFields, null, 2)}
+        Fields to generate:
+        ${JSON.stringify(templateFields, null, 2)}
 
-Document:
-${truncatedContent}
-`;
+        Document:
+        ${truncatedContent}
+      `;
 
       let rawOutput = "";
 

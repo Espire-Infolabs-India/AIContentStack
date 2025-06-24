@@ -154,6 +154,55 @@ export default function HomePage() {
         }
       });
 
+      Object.assign(data, { 
+        "authorlink": {
+          "title": "",
+          "href": ""
+        },
+        "baselink": {
+          "title": "",
+          "href": ""
+        },
+        "body": {
+          "type": "doc",
+          "uid": "afb1c9780f124d1a976747a318a94e14",
+          "_version": 4,
+          "attrs": {},
+          "children": [
+            {
+              "type": "p",
+              "attrs": {},
+              "uid": "88ff644d2eb749f2ba756ba0acec1b15",
+              "children": [
+                {
+                  "text": ""
+                }
+              ]
+            }
+          ]
+        },
+        "date": null,
+        "formhide": null,
+        "global_field": {
+          "site_section": null
+        },
+        "image": {
+          "title": "",
+          "href": ""
+        },
+        "pressreleasedate": null,
+        "relateddocument": {
+          "title": "",
+          "href": ""
+        },
+        "seo": {
+          "enable_search_indexing": false,
+          "keywords": "",
+          "meta_description": "",
+          "meta_title": ""
+        }
+      });  
+
       const myHeaders = new Headers();
       myHeaders.append('authorization', process.env.AUTHORIZATION as string);
       myHeaders.append('api_key', process.env.API_KEY as string);

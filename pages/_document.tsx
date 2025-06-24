@@ -40,7 +40,7 @@ class MyDocument extends Document {
           <link rel='apple-touch-icon' href='/path/to/apple-touch-icon.png' />
           <meta name='theme-color' content='#317EFB' />
         </Head>
-        <body style={{fontFamily: "inherit"}}>
+        <body className='body-main' style={{fontFamily: "Inter"}}>
           <Main />
           <NextScript />
         </body>

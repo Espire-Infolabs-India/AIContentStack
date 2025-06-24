@@ -147,6 +147,62 @@ export default function HomePage() {
         }
       });
 
+      const formDropdown = document.querySelectorAll<HTMLTextAreaElement>('.form-dropdown');
+      formDropdown?.forEach((dropdown) => {
+        if (dropdown?.name && dropdown?.value) {
+          Object.assign(data, { [dropdown?.name]: [{"uid": dropdown?.value, "_content_type_uid": dropdown?.id}] });
+        }
+      });
+
+      Object.assign(data, { 
+        "authorlink": {
+          "title": "",
+          "href": ""
+        },
+        "baselink": {
+          "title": "",
+          "href": ""
+        },
+        "body": {
+          "type": "doc",
+          "uid": "afb1c9780f124d1a976747a318a94e14",
+          "_version": 4,
+          "attrs": {},
+          "children": [
+            {
+              "type": "p",
+              "attrs": {},
+              "uid": "88ff644d2eb749f2ba756ba0acec1b15",
+              "children": [
+                {
+                  "text": ""
+                }
+              ]
+            }
+          ]
+        },
+        "date": null,
+        "formhide": null,
+        "global_field": {
+          "site_section": null
+        },
+        "image": {
+          "title": "",
+          "href": ""
+        },
+        "pressreleasedate": null,
+        "relateddocument": {
+          "title": "",
+          "href": ""
+        },
+        "seo": {
+          "enable_search_indexing": false,
+          "keywords": "",
+          "meta_description": "",
+          "meta_title": ""
+        }
+      });  
+
       const myHeaders = new Headers();
       myHeaders.append("authorization", process.env.AUTHORIZATION as string);
       myHeaders.append("api_key", process.env.API_KEY as string);
@@ -167,7 +223,6 @@ export default function HomePage() {
 
       const result = await response.json();
       setSuccessMsg(true);
-      console.log("final response", result);
       setLoading(false);
     } catch (err) {
       console.error("Upload error:", err);
@@ -256,10 +311,7 @@ export default function HomePage() {
                     {item?.displayName} <span className="req">(Required)</span>
                   </strong>
                 </label>
-                <select
-                  name={item?.key}
-                  className="form-select form-dropdown form-textarea"
-                >
+                <select name={item?.actual_uid} id={item?.key} className="form-select form-dropdown form-textarea">
                   <option value="">Choose...</option>
                   {item?.values?.map((ele: any, ind: number) =>
                     ele?.title ? (

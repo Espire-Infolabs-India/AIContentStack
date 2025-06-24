@@ -79,12 +79,14 @@ export default async function handler(req, res) {
       const response = await axios(templateConfig);
       const schemas = response?.data?.content_type?.schema;
 
-      let refrerenceFieldsList = [];
-        let getReferenceFieldsAsync = (async(entryName, displayName) => {
+       
+
+        let refrerenceFieldsList = [];
+        let getReferenceFieldsAsync = (async(entryName, displayName, actual_uid) => {
             let getEntries = await fetch(`${process?.env?.BASE_URL}/api/get-content-entries/?content_name=${entryName}`);
             let getEntriesData = await getEntries.json();
             if(getEntriesData){
-              refrerenceFieldsList.push({displayName: displayName, key: entryName, values: getEntriesData?.entries});
+              refrerenceFieldsList.push({displayName: displayName, key: entryName, values: getEntriesData?.entries, actual_uid: actual_uid});
             }
         });
         
@@ -92,7 +94,8 @@ export default async function handler(req, res) {
           if(field?.reference_to && field?.data_type == "reference"){
             let entryName = field?.reference_to[0];
             let displayName = field?.display_name;
-            return await getReferenceFieldsAsync(entryName, displayName);
+            let actual_uid = field?.uid;
+            return await getReferenceFieldsAsync(entryName, displayName, actual_uid);
           }
         }));
 
@@ -132,17 +135,17 @@ export default async function handler(req, res) {
       const promptText = Prompt?.promptText || "";
 
       const prompt = `
-${promptText}
+        ${promptText}
 
-Instructions:
-${instructions.join("\n")}
+        Instructions:
+        ${instructions.join("\n")}
 
-Fields to generate:
-${JSON.stringify(templateFields, null, 2)}
+        Fields to generate:
+        ${JSON.stringify(templateFields, null, 2)}
 
-Document:
-${truncatedContent}
-`;
+        Document:
+        ${truncatedContent}
+      `;
 
       let rawOutput = "";
 
@@ -165,7 +168,6 @@ ${truncatedContent}
       let parsed;
       try {
         const parsedTemp = JSON.parse(rawOutput);
-        console.log('--------parsedTemp',parsedTemp);
         const keyMap = Object.fromEntries(
           tempTemplateFields.map(({ key, value }) => [key, value])
         );

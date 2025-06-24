@@ -23,11 +23,6 @@ export default async function handler(req, res) {
     }
 
     const uploadedFile = Array.isArray(files.file) ? files.file[0] : files.file;
-
-    console.log('____________________________________');
-    console.log('__________________uploadedFile__________________',uploadedFile);
-    console.log('____________________________________');
-
     if (!uploadedFile || !uploadedFile.filepath || !uploadedFile.originalFilename) {
       return res.status(400).json({ message: 'Missing or invalid file upload' });
     }

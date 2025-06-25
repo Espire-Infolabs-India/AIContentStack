@@ -1,6 +1,5 @@
 import { IncomingForm } from "formidable";
 import fs from "fs";
-import os from "os";
 import path from "path";
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import axios from "axios";
@@ -146,6 +145,7 @@ export default async function handler(req, res) {
         Document:
         ${truncatedContent}
       `;
+
 
       let rawOutput = "";
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, FormEvent } from "react";
 import axios from "axios";
+import Settings from "./Settings";
 
 interface FormField {
   name: string;
@@ -28,6 +29,9 @@ export default function HomePage() {
   const [firstPage, setFirstPage] = useState(true);
   const [secondPage, setSecondPage] = useState(false);
   const [uploadedDetails, setUploadedDetails] = useState(false);
+  const [sucessPage, setSucessPage] = useState(false);
+  const [finalResult, setFinalResult] = useState<any>(null);
+  
 
   const setSecond: () => void = () => {
     if(url == '' && fileName == ''){
@@ -36,6 +40,7 @@ export default function HomePage() {
     }else{
       setSecondPage(true);
       setFirstPage(false);
+      setSucessPage(false);
       setUploads(true);
     }
   };
@@ -48,10 +53,26 @@ export default function HomePage() {
     setSecondPage(false);
     setFirstPage(true);
     setUploads(false);
+    setSucessPage(false);
+  };
+
+  const setSuccess: () => void = () => {
+    setURL('');
+    setFileName('');
+    setFileSize(0);
+    setSelectedFile(null);
+    setSecondPage(false);
+    setFirstPage(false);
+    setUploads(false);
+    setSucessPage(true);
   };
 
   const setUploads = (val: any): void => {
     setUploadedDetails(val);
+  };
+
+  const getAIModel = (e: React.SyntheticEvent) => {
+    setAIModel((e.target as HTMLInputElement).value);
   };
 
   useEffect(() => {
@@ -92,8 +113,6 @@ export default function HomePage() {
   };
 
   const generateContent = async (e: React.SyntheticEvent) => {
-
-
     if (!template) return alert("Please select a content type.");
     if ((!selectedFile && !url.trim()) || (selectedFile && url.trim())) {
       return alert("Please provide either a PDF file or a URL, but not both.");
@@ -128,7 +147,7 @@ export default function HomePage() {
     } catch (err) {
       setFirstPage(true);
       console.error(err);
-      alert("Error generating content.");
+      alert("We encountered an issue while processing your request via the AI API. Kindly try again");
     } finally {
       setLoading(false);
     }
@@ -263,21 +282,23 @@ export default function HomePage() {
       );
 
       const result = await response.json();
-      setSuccessMsg(true);
+      console.log('-----------------finalResult',result?.entry?.url ,result);
+      setFinalResult(result);
+      setSucessPage(true);
+      setSuccess();
+      setResult(null);
       setLoading(false);
-
-      setCancel();
     } catch (err) {
       console.error("Upload error:", err);
       alert("One or more uploads failed.");
       setLoading(false);
       setSuccessMsg(false);
+      setResult(null);
+      setCancel();
     }
   };
 
   const renderResult = () => {
-    
-
     if (!result) return null;
 
     let json: any = result;
@@ -371,7 +392,11 @@ export default function HomePage() {
           </div>
 
           <div className="mb-4 flex justify-end bg-white border-[var(--border-color)] border-[1px] p-4 rounded-lg">
-            {/* <button type="button" className="primary-button">
+            <button className="primary-button" onClick={setCancel}>Cancel</button>
+            <button type="button" className="primary-button"
+              onClick={handleSubmit}
+              disabled={loading}
+            >
               <svg
                 width="18"
                 height="20"
@@ -393,7 +418,7 @@ export default function HomePage() {
                 />
               </svg>
               Save
-            </button> */}
+            </button>
             <button
               className="primary-button active"
               onClick={handleSubmit}
@@ -415,24 +440,50 @@ export default function HomePage() {
             </button>
           </div>
         </form>
-        {successMsg && (
-          <div className="alert alert-success mt-3">
-            Successfully Created Entry.
-          </div>
-        )}
       </div>
     );
   };
 
   return (
     <div className="container py-3">
-      {/* <header className="mb-4">
-        <h1 className="display-5">Content Generator using Document AI</h1>
-        <p className="lead">
-          Transform your PDFs into structured, customized content with our
-          intelligent template-based generator
-        </p>
-      </header> */}
+      <div className="w-full">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between py-3">
+            {/* Logo */}
+            <div className="flex justify-between w-full items-center">
+              <h1 className="flex items-center">
+                Espire CMS Copilate
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="ml-4"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"
+                      d="M10 1.5625C5.34025 1.5625 1.5625 5.34025 1.5625 10C1.5625 14.6597 5.34025 18.4375 10 18.4375C14.6597 18.4375 18.4375 14.6597 18.4375 10C18.4375 5.34025 14.6597 1.5625 10 1.5625ZM0.4375 10C0.4375 4.7185 4.7185 0.4375 10 0.4375C15.2815 0.4375 19.5625 4.7185 19.5625 10C19.5625 15.2815 15.2815 19.5625 10 19.5625C4.7185 19.5625 0.4375 15.2815 0.4375 10Z"
+                      fill="#6E6B86"
+                    />
+                    <path
+                      d="M10 15.8125C10.2486 15.8125 10.4871 15.7137 10.6629 15.5379C10.8387 15.3621 10.9375 15.1236 10.9375 14.875C10.9375 14.6264 10.8387 14.3879 10.6629 14.2121C10.4871 14.0363 10.2486 13.9375 10 13.9375C9.75136 13.9375 9.5129 14.0363 9.33709 14.2121C9.16127 14.3879 9.0625 14.6264 9.0625 14.875C9.0625 15.1236 9.16127 15.3621 9.33709 15.5379C9.5129 15.7137 9.75136 15.8125 10 15.8125Z"
+                      fill="#6E6B86"
+                    />
+                    <path
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"
+                      d="M8.7805 5.1805C9.19392 5.00933 9.63875 4.92712 10.086 4.93922C10.5333 4.95131 10.9731 5.05745 11.3766 5.25071C11.7802 5.44398 12.1385 5.72005 12.4284 6.06095C12.7182 6.40186 12.933 6.79997 13.0588 7.22937C13.1846 7.65878 13.2186 8.10986 13.1585 8.55326C13.0985 8.99667 12.9458 9.42247 12.7103 9.80295C12.4748 10.1834 12.1619 10.5101 11.7918 10.7616C11.4218 11.0132 11.0029 11.184 10.5625 11.263V11.5C10.5625 11.6492 10.5032 11.7923 10.3977 11.8977C10.2923 12.0032 10.1492 12.0625 10 12.0625C9.85082 12.0625 9.70774 12.0032 9.60225 11.8977C9.49676 11.7923 9.4375 11.6492 9.4375 11.5V10.75C9.4375 10.6008 9.49676 10.4577 9.60225 10.3523C9.70774 10.2468 9.85082 10.1875 10 10.1875C10.4079 10.1875 10.8067 10.0665 11.1459 9.83991C11.485 9.61328 11.7494 9.29116 11.9055 8.91428C12.0616 8.53741 12.1025 8.12271 12.0229 7.72263C11.9433 7.32254 11.7469 6.95504 11.4584 6.66659C11.17 6.37815 10.8025 6.18171 10.4024 6.10213C10.0023 6.02255 9.58759 6.06339 9.21072 6.2195C8.83384 6.3756 8.51172 6.63996 8.28509 6.97914C8.05846 7.31831 7.9375 7.71708 7.9375 8.125C7.9375 8.27418 7.87824 8.41726 7.77275 8.52275C7.66726 8.62824 7.52418 8.6875 7.375 8.6875C7.22582 8.6875 7.08274 8.62824 6.97725 8.52275C6.87176 8.41726 6.8125 8.27418 6.8125 8.125C6.8126 7.4946 6.99962 6.87838 7.34992 6.35427C7.70022 5.83016 8.19806 5.42168 8.7805 5.1805Z"
+                      fill="#6E6B86"
+                    />
+                  </svg>
+              </h1>
+              <Settings model={aiModel} setAIModel={getAIModel} /> 
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* <Settings model={aiModel} setAIModel={getAIModel} /> */}
 
@@ -594,69 +645,86 @@ export default function HomePage() {
       {/* Uploaded Document and Url Details */}
 
       {secondPage && (
-          <div className="mb-5">
-            <div className="bg-white content-box">
-              <div className="border-[var(--border-color)] border-t-[1px] rounded-t-lg border-l-[1px] border-r-[1px] border-b-[1px] p-4">
-                <h2>Select Content Types</h2>
-              </div>
-              <div className="p-4 border-[var(--border-color)] border-l-[1px] border-r-[1px]">
-                {contentTypeResult?.content_types?.map(
-                  (field: { options: any; title: string; uid: string }) =>
-                    field.options.is_page && (
-                      <div className="form-check" key={field.uid}>
-                        <label className="form-check-label">
-                          <input
-                            type="radio"
-                            className="form-check-input"
-                            name="template"
-                            value={field.uid}
-                            checked={template === field.uid}
-                            onChange={() => setTemplate(field.uid)}
-                          />
-                          {field.title}
-                        </label>
-                      </div>
-                    )
-                )}
-              </div>
+        <div className="mb-5">
+          <div className="bg-white content-box">
+            <div className="border-[var(--border-color)] border-t-[1px] rounded-t-lg border-l-[1px] border-r-[1px] border-b-[1px] p-4">
+              <h2>Select Content Types</h2>
             </div>
-            <div className="bg-white flex justify-content-end border-b-[1px] border-t-[1px] border-l-[1px] border-r-[1px] p-4 rounded-b-lg">
-            <button className="primary-button" type="button" onClick={setCancel}>
-              Cancel
-            </button>
-            <button
-              className="bg-[var(--blue-color)] primary-button active flex space-x-4"
-              disabled={!template || (!selectedFile && !url.trim()) || loading}
-              onClick={generateContent}
-              type="button"
-            >
-              {loading ? (
-                "Generating..."
-              ) : (
-                <>
-                  <svg
-                    width="21"
-                    height="20"
-                    viewBox="0 0 21 20"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M12.6492 18.2645H6.27425M11.75 6.19402L1.25 16.694M18.5 12.2645V16.7645M20.75 14.5145H16.25M14.93 9.37477C15.7538 8.52615 16.2106 7.38752 16.2018 6.20488C16.193 5.02224 15.7193 3.89053 14.883 3.05425C14.0467 2.21797 12.915 1.74427 11.7324 1.73548C10.5497 1.72669 9.41112 2.18351 8.5625 3.00727L3.5 8.06977V14.4448H9.875L14.93 9.37477Z"
-                      stroke="white"
-                      stroke-width="1.5"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  Generate Content
-                </>
+            <div className="p-4 border-[var(--border-color)] border-l-[1px] border-r-[1px]">
+              {contentTypeResult?.content_types?.map(
+                (field: { options: any; title: string; uid: string }) =>
+                  field.options.is_page && (
+                    <div className="form-check" key={field.uid}>
+                      <label className="form-check-label">
+                        <input
+                          type="radio"
+                          className="form-check-input"
+                          name="template"
+                          value={field.uid}
+                          checked={template === field.uid}
+                          onChange={() => setTemplate(field.uid)}
+                        />
+                        {field.title}
+                      </label>
+                    </div>
+                  )
               )}
-            </button>
             </div>
           </div>
+          <div className="bg-white flex justify-content-end border-b-[1px] border-t-[1px] border-l-[1px] border-r-[1px] p-4 rounded-b-lg">
+          <button className="primary-button" type="button" onClick={setCancel}>
+            Cancel
+          </button>
+          <button
+            className="bg-[var(--blue-color)] primary-button active flex space-x-4"
+            disabled={!template || (!selectedFile && !url.trim()) || loading}
+            onClick={generateContent}
+            type="button"
+          >
+            {loading ? (
+              "Generating..."
+            ) : (
+              <>
+                <svg
+                  width="21"
+                  height="20"
+                  viewBox="0 0 21 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12.6492 18.2645H6.27425M11.75 6.19402L1.25 16.694M18.5 12.2645V16.7645M20.75 14.5145H16.25M14.93 9.37477C15.7538 8.52615 16.2106 7.38752 16.2018 6.20488C16.193 5.02224 15.7193 3.89053 14.883 3.05425C14.0467 2.21797 12.915 1.74427 11.7324 1.73548C10.5497 1.72669 9.41112 2.18351 8.5625 3.00727L3.5 8.06977V14.4448H9.875L14.93 9.37477Z"
+                    stroke="white"
+                    stroke-width="1.5"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                Generate Content
+              </>
+            )}
+          </button>
+          </div>
+        </div>
        )}
 
       {renderResult()}
+
+      {sucessPage && (
+        <div className="new-page">
+          <div className="bg-white flex items-center space-x-4 border-[var(--border-color)] border-t-[1px] rounded-t-lg border-l-[1px] border-r-[1px] border-b-[1px] p-4">
+            <h2>
+              New Page - {finalResult?.entry?.title}
+            </h2>
+            <button className="primary-button" type="button" onClick={setCancel}>
+              New Content
+            </button>
+          </div>
+          <div className="bg-white p-4 border-[var(--border-color)] border-l-[1px] border-b-[1px] border-r-[1px] rounded-b-lg">
+            <p className="mb-4">Url : {finalResult?.entry?.url}</p>
+            <p className="mb-4">Summary: {finalResult?.entry?.summary}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

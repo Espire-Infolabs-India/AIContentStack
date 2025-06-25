@@ -62,7 +62,7 @@ export default function Layout({
 
   return (
     <>
-      {header ? <Header /> : ''}
+      {/* {header ? <Header /> : ''} */}
       <main className='mainClass'>
         <>
         {/* <Sidebar /> */}

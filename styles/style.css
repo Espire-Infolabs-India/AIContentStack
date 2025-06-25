@@ -125,3 +125,11 @@ button.primary-button:hover svg path {
 .or-divider span {
   @apply mx-2;
 }
+
+.new-page h2{
+  @apply text-[14px] font-bold leading-[20px] text-[var(--dark-gray-color)];
+}
+ 
+.new-page p{
+  @apply text-[13px] font-normal leading-[20px];
+}

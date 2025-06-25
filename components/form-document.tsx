@@ -194,7 +194,7 @@ export default function HomePage() {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (isPublish:boolean) => {
     try {
       setLoading(true);
       const data: Record<string, any> = {};
@@ -283,6 +283,11 @@ export default function HomePage() {
 
       const result = await response.json();
       console.log('-----------------finalResult',result?.entry?.url ,result);
+
+      let entryId = result?.entry?.uid;
+      if(isPublish){
+        publishEntry(entryId);
+      }
       setFinalResult(result);
       setSucessPage(true);
       setSuccess();
@@ -297,6 +302,35 @@ export default function HomePage() {
       setCancel();
     }
   };
+
+  // isPublish:boolean
+  const publishEntry = async (EntriyUid:string) => {
+    const myHeaders = new Headers();
+    myHeaders.append("authorization", process.env.AUTHORIZATION as string);
+    myHeaders.append("api_key", process.env.API_KEY as string);
+    myHeaders.append("Content-Type", "application/json");
+
+    let data = {
+      environments: ["development"],
+      locales: ["en-us"],
+    }     
+
+    const raw = JSON.stringify({ entry: { ...data } });
+    const requestOptions: RequestInit = {
+      method: "POST",
+      headers: myHeaders,
+      body: raw,
+    };
+
+    const response = await fetch(
+      `https://api.contentstack.io/v3/content_types/${template}/entries/${EntriyUid}/publish`,
+      requestOptions
+    );
+
+    const publishingResult = await response.json();
+    console.log('publishing url',`https://api.contentstack.io/v3/content_types/${template}/entries/${EntriyUid}/publish`);
+    console.log('________________publishingResult',publishingResult);
+  }
 
   const renderResult = () => {
     if (!result) return null;
@@ -394,7 +428,8 @@ export default function HomePage() {
           <div className="mb-4 flex justify-end bg-white border-[var(--border-color)] border-[1px] p-4 rounded-lg">
             <button className="primary-button" onClick={setCancel}>Cancel</button>
             <button type="button" className="primary-button"
-              onClick={handleSubmit}
+              onClick={() => handleSubmit(false)}
+              //onClick={handleSubmit}
               disabled={loading}
             >
               <svg
@@ -421,7 +456,7 @@ export default function HomePage() {
             </button>
             <button
               className="primary-button active"
-              onClick={handleSubmit}
+              onClick={() => handleSubmit(true)}
               disabled={loading}
             >
               <svg

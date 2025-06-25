@@ -487,7 +487,7 @@ export default function HomePage() {
             {/* Logo */}
             <div className="flex justify-between w-full items-center">
               <h1 className="flex items-center">
-                Espire CMS Copilate
+                Espire CMS Co-pilot
                   <svg
                     width="20"
                     height="20"

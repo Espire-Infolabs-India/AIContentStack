@@ -11,8 +11,12 @@ interface FormField {
 export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState<string>("");
+  const [fileSize, setFileSize] = useState<number>(0);
+  
   const [template, setTemplate] = useState<string>("author");
   const [url, setURL] = useState<string>("");
+  
   const [successMsg, setSuccessMsg] = useState<boolean>(false);
   const [result, setResult] = useState<any>(null);
   const [referenceFields, setReferenceFields] = useState<any>(null);
@@ -20,6 +24,35 @@ export default function HomePage() {
   const [contentTypeResult, setContentTypeResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [aiModel, setAIModel] = useState<string>("gemini-2.0-flash");
+  
+  const [firstPage, setFirstPage] = useState(true);
+  const [secondPage, setSecondPage] = useState(false);
+  const [uploadedDetails, setUploadedDetails] = useState(false);
+
+  const setSecond: () => void = () => {
+    if(url == '' && fileName == ''){
+      alert('Please choose file or enter any url for import.');
+      return false;
+    }else{
+      setSecondPage(true);
+      setFirstPage(false);
+      setUploads(true);
+    }
+  };
+
+  const setCancel: () => void = () => {
+    setURL('');
+    setFileName('');
+    setFileSize(0);
+    setSelectedFile(null);
+    setSecondPage(false);
+    setFirstPage(true);
+    setUploads(false);
+  };
+
+  const setUploads = (val: any): void => {
+    setUploadedDetails(val);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,6 +77,8 @@ export default function HomePage() {
       return;
     }
     if (file.type === "application/pdf") {
+      setFileName(file.name);
+      setFileSize(file.size);
       setSelectedFile(file);
     } else {
       alert("Please upload a PDF file");
@@ -57,6 +92,8 @@ export default function HomePage() {
   };
 
   const generateContent = async (e: React.SyntheticEvent) => {
+
+
     if (!template) return alert("Please select a content type.");
     if ((!selectedFile && !url.trim()) || (selectedFile && url.trim())) {
       return alert("Please provide either a PDF file or a URL, but not both.");
@@ -82,10 +119,14 @@ export default function HomePage() {
       );
       if (!res.ok) throw new Error("Failed to generate content");
       const data = await res.json();
+      setSecondPage(false);
+      setFirstPage(false);
+
       setResult(data?.summary);
       setReferenceFields(data?.referenceFields);
       setFileFieldList(data?.fileFieldList);
     } catch (err) {
+      setFirstPage(true);
       console.error(err);
       alert("Error generating content.");
     } finally {
@@ -224,6 +265,8 @@ export default function HomePage() {
       const result = await response.json();
       setSuccessMsg(true);
       setLoading(false);
+
+      setCancel();
     } catch (err) {
       console.error("Upload error:", err);
       alert("One or more uploads failed.");
@@ -233,6 +276,8 @@ export default function HomePage() {
   };
 
   const renderResult = () => {
+    
+
     if (!result) return null;
 
     let json: any = result;
@@ -326,7 +371,7 @@ export default function HomePage() {
           </div>
 
           <div className="mb-4 flex justify-end bg-white border-[var(--border-color)] border-[1px] p-4 rounded-lg">
-            <button type="button" className="primary-button">
+            {/* <button type="button" className="primary-button">
               <svg
                 width="18"
                 height="20"
@@ -348,7 +393,7 @@ export default function HomePage() {
                 />
               </svg>
               Save
-            </button>
+            </button> */}
             <button
               className="primary-button active"
               onClick={handleSubmit}
@@ -391,7 +436,8 @@ export default function HomePage() {
 
       {/* <Settings model={aiModel} setAIModel={getAIModel} /> */}
 
-      <div
+      {firstPage && (
+        <div
         className="text-center mb-5"
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
@@ -472,118 +518,143 @@ export default function HomePage() {
         </div>
 
         <div className="bg-white flex justify-content-end border-b-[1px] border-t-[1px] border-l-[1px] border-r-[1px] p-4 rounded-b-lg">
-          <button className="primary-button">Cancel</button>
-          <button className="primary-button active">Import</button>
+          <button className="primary-button" onClick={setCancel}>Cancel</button>
+          <button className="primary-button active" onClick={setSecond}>Import</button>
         </div>
-      </div>
+        </div>
+      )}
 
-      <div className="mb-5">
+      {/* Uploaded Document and Url Details Are Below */}
+      {uploadedDetails && (
         <div className="bg-white border-[var(--border-color)] border-[1px] p-4 flex items-center justify-between mb-4 rounded-lg">
           <span className="w-1/2 flex items-center">
-            <svg
-              width="100"
-              height="100"
-              viewBox="0 0 100 100"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fill-rule="evenodd"
-                clip-rule="evenodd"
-                d="M18.7651 65.2653C18.7651 64.7132 18.9845 64.1838 19.3748 63.7934C19.7652 63.403 20.2947 63.1837 20.8468 63.1837H25.7039C28.4643 63.1837 31.1117 64.2803 33.0636 66.2322C35.0155 68.1841 36.1121 70.8314 36.1121 73.5918C36.1121 76.3523 35.0155 78.9996 33.0636 80.9515C31.1117 82.9034 28.4643 84 25.7039 84H20.8468C20.2947 84 19.7652 83.7807 19.3748 83.3903C18.9845 82.9999 18.7651 82.4705 18.7651 81.9184V65.2653ZM22.9284 67.3469V79.8367H25.7039C27.3602 79.8367 28.9486 79.1788 30.1197 78.0076C31.2909 76.8365 31.9488 75.2481 31.9488 73.5918C31.9488 71.9356 31.2909 70.3472 30.1197 69.176C28.9486 68.0049 27.3602 67.3469 25.7039 67.3469H22.9284ZM50.6835 67.3469C47.7859 67.3469 45.1325 69.9698 45.1325 73.5918C45.1325 77.2139 47.7859 79.8367 50.6835 79.8367C53.5811 79.8367 56.2345 77.2139 56.2345 73.5918C56.2345 69.9698 53.5811 67.3469 50.6835 67.3469ZM40.9692 73.5918C40.9692 68.0186 45.1519 63.1837 50.6835 63.1837C56.2151 63.1837 60.3978 68.0186 60.3978 73.5918C60.3978 79.1651 56.2151 84 50.6835 84C45.1519 84 40.9692 79.1651 40.9692 73.5918ZM74.267 67.3469C71.3527 67.3525 68.7243 69.9559 68.7243 73.5918C68.7243 77.2278 71.3555 79.8312 74.267 79.8367C75.5493 79.8229 76.7816 79.3371 77.7281 78.474C77.9291 78.2852 78.1655 78.1383 78.4238 78.0417C78.682 77.945 78.9569 77.9007 79.2324 77.9112C79.5079 77.9217 79.7786 77.9868 80.0287 78.1028C80.2789 78.2188 80.5035 78.3833 80.6895 78.5868C80.8756 78.7903 81.0193 79.0287 81.1124 79.2882C81.2056 79.5477 81.2462 79.8232 81.232 80.0985C81.2178 80.3739 81.1491 80.6437 81.0297 80.8922C80.9104 81.1408 80.7429 81.3632 80.5369 81.5464C78.8296 83.1073 76.6052 83.9813 74.292 84H74.2753C68.7243 84 64.5611 79.1817 64.5611 73.5918C64.5611 68.002 68.7243 63.1837 74.2753 63.1837H74.292C76.6052 63.2024 78.8296 64.0763 80.5369 65.6372C80.7429 65.8205 80.9104 66.0429 81.0297 66.2914C81.1491 66.54 81.2178 66.8098 81.232 67.0851C81.2462 67.3605 81.2056 67.6359 81.1124 67.8955C81.0193 68.155 80.8756 68.3934 80.6895 68.5969C80.5035 68.8004 80.2789 68.9649 80.0287 69.0809C79.7786 69.1969 79.5079 69.262 79.2324 69.2725C78.9569 69.283 78.682 69.2386 78.4238 69.142C78.1655 69.0454 77.9291 68.8985 77.7281 68.7097C76.7817 67.8446 75.5492 67.3593 74.267 67.3469ZM25.01 20.1633C24.826 20.1633 24.6495 20.2364 24.5194 20.3665C24.3893 20.4966 24.3162 20.6731 24.3162 20.8571V51.3878C24.3162 51.9398 24.0968 52.4693 23.7065 52.8597C23.3161 53.2501 22.7866 53.4694 22.2345 53.4694C21.6824 53.4694 21.153 53.2501 20.7626 52.8597C20.3722 52.4693 20.1529 51.9398 20.1529 51.3878V20.8571C20.1529 19.5689 20.6646 18.3335 21.5755 17.4226C22.4864 16.5117 23.7218 16 25.01 16H58.3162C58.8681 16.0005 59.3972 16.2201 59.7872 16.6106L79.2158 36.0392C79.6071 36.4278 79.8264 36.9579 79.8264 37.5102V51.3878C79.8264 51.9398 79.6071 52.4693 79.2167 52.8597C78.8263 53.2501 78.2968 53.4694 77.7447 53.4694C77.1926 53.4694 76.6632 53.2501 76.2728 52.8597C75.8824 52.4693 75.6631 51.9398 75.6631 51.3878V38.3706L57.4558 20.1633H25.01Z"
-                fill="#475161"
-              />
-              <path
-                fill-rule="evenodd"
-                clip-rule="evenodd"
-                d="M58.3162 16C58.8681 16.0005 59.3972 16.2201 59.7872 16.6106C60.1776 17.001 60.3978 17.5295 60.3978 18.0816V35.4286H77.7447C78.2968 35.4286 78.8254 35.6488 79.2158 36.0392C79.6071 36.4278 79.8264 36.9579 79.8264 37.5102C79.8264 38.0623 79.6071 38.5918 79.2167 38.9821C78.8263 39.3725 78.2968 39.5918 77.7447 39.5918H58.3162C57.7641 39.5918 57.2346 39.3725 56.8442 38.9821C56.4538 38.5918 56.2345 38.0623 56.2345 37.5102V18.0816C56.2345 17.5295 56.4538 17.0001 56.8442 16.6097C57.2346 16.2193 57.7641 16 58.3162 16Z"
-                fill="#475161"
-              />
-            </svg>
-            <h3>Espire Blog AI Sample Content.pdf</h3>
-          </span>
-          <span className="w-1/2 flex items-center justify-end">
-            725.00 KB / 725.00 KB
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="ml-4"
-            >
-              <path
-                fill-rule="evenodd"
-                clip-rule="evenodd"
-                d="M19.8442 6.65567C19.9439 6.75548 20 6.89077 20 7.03184C20 7.1729 19.9439 7.30819 19.8442 7.408L9.89657 17.3443C9.79665 17.444 9.66121 17.5 9.51999 17.5C9.37877 17.5 9.24332 17.444 9.1434 17.3443L4.16961 12.3762C4.11725 12.3274 4.07526 12.2687 4.04613 12.2034C4.01701 12.1381 4.00135 12.0676 4.00008 11.9961C3.99882 11.9246 4.01198 11.8536 4.03879 11.7874C4.06559 11.7211 4.10548 11.6609 4.15608 11.6103C4.20669 11.5598 4.26697 11.5199 4.33332 11.4932C4.39968 11.4664 4.47075 11.4532 4.54231 11.4545C4.61386 11.4558 4.68443 11.4714 4.7498 11.5005C4.81517 11.5296 4.874 11.5715 4.92279 11.6238L9.51999 16.2158L19.091 6.65567C19.1909 6.55599 19.3263 6.5 19.4676 6.5C19.6088 6.5 19.7442 6.55599 19.8442 6.65567Z"
-                fill="#198754"
-                stroke="#198754"
-                stroke-width="2"
-              />
-            </svg>
-          </span>
-        </div>
+              {fileName && (
+                  <>
+                    <svg
+                      width="100"
+                      height="100"
+                      viewBox="0 0 100 100"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                    <path
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"
+                      d="M18.7651 65.2653C18.7651 64.7132 18.9845 64.1838 19.3748 63.7934C19.7652 63.403 20.2947 63.1837 20.8468 63.1837H25.7039C28.4643 63.1837 31.1117 64.2803 33.0636 66.2322C35.0155 68.1841 36.1121 70.8314 36.1121 73.5918C36.1121 76.3523 35.0155 78.9996 33.0636 80.9515C31.1117 82.9034 28.4643 84 25.7039 84H20.8468C20.2947 84 19.7652 83.7807 19.3748 83.3903C18.9845 82.9999 18.7651 82.4705 18.7651 81.9184V65.2653ZM22.9284 67.3469V79.8367H25.7039C27.3602 79.8367 28.9486 79.1788 30.1197 78.0076C31.2909 76.8365 31.9488 75.2481 31.9488 73.5918C31.9488 71.9356 31.2909 70.3472 30.1197 69.176C28.9486 68.0049 27.3602 67.3469 25.7039 67.3469H22.9284ZM50.6835 67.3469C47.7859 67.3469 45.1325 69.9698 45.1325 73.5918C45.1325 77.2139 47.7859 79.8367 50.6835 79.8367C53.5811 79.8367 56.2345 77.2139 56.2345 73.5918C56.2345 69.9698 53.5811 67.3469 50.6835 67.3469ZM40.9692 73.5918C40.9692 68.0186 45.1519 63.1837 50.6835 63.1837C56.2151 63.1837 60.3978 68.0186 60.3978 73.5918C60.3978 79.1651 56.2151 84 50.6835 84C45.1519 84 40.9692 79.1651 40.9692 73.5918ZM74.267 67.3469C71.3527 67.3525 68.7243 69.9559 68.7243 73.5918C68.7243 77.2278 71.3555 79.8312 74.267 79.8367C75.5493 79.8229 76.7816 79.3371 77.7281 78.474C77.9291 78.2852 78.1655 78.1383 78.4238 78.0417C78.682 77.945 78.9569 77.9007 79.2324 77.9112C79.5079 77.9217 79.7786 77.9868 80.0287 78.1028C80.2789 78.2188 80.5035 78.3833 80.6895 78.5868C80.8756 78.7903 81.0193 79.0287 81.1124 79.2882C81.2056 79.5477 81.2462 79.8232 81.232 80.0985C81.2178 80.3739 81.1491 80.6437 81.0297 80.8922C80.9104 81.1408 80.7429 81.3632 80.5369 81.5464C78.8296 83.1073 76.6052 83.9813 74.292 84H74.2753C68.7243 84 64.5611 79.1817 64.5611 73.5918C64.5611 68.002 68.7243 63.1837 74.2753 63.1837H74.292C76.6052 63.2024 78.8296 64.0763 80.5369 65.6372C80.7429 65.8205 80.9104 66.0429 81.0297 66.2914C81.1491 66.54 81.2178 66.8098 81.232 67.0851C81.2462 67.3605 81.2056 67.6359 81.1124 67.8955C81.0193 68.155 80.8756 68.3934 80.6895 68.5969C80.5035 68.8004 80.2789 68.9649 80.0287 69.0809C79.7786 69.1969 79.5079 69.262 79.2324 69.2725C78.9569 69.283 78.682 69.2386 78.4238 69.142C78.1655 69.0454 77.9291 68.8985 77.7281 68.7097C76.7817 67.8446 75.5492 67.3593 74.267 67.3469ZM25.01 20.1633C24.826 20.1633 24.6495 20.2364 24.5194 20.3665C24.3893 20.4966 24.3162 20.6731 24.3162 20.8571V51.3878C24.3162 51.9398 24.0968 52.4693 23.7065 52.8597C23.3161 53.2501 22.7866 53.4694 22.2345 53.4694C21.6824 53.4694 21.153 53.2501 20.7626 52.8597C20.3722 52.4693 20.1529 51.9398 20.1529 51.3878V20.8571C20.1529 19.5689 20.6646 18.3335 21.5755 17.4226C22.4864 16.5117 23.7218 16 25.01 16H58.3162C58.8681 16.0005 59.3972 16.2201 59.7872 16.6106L79.2158 36.0392C79.6071 36.4278 79.8264 36.9579 79.8264 37.5102V51.3878C79.8264 51.9398 79.6071 52.4693 79.2167 52.8597C78.8263 53.2501 78.2968 53.4694 77.7447 53.4694C77.1926 53.4694 76.6632 53.2501 76.2728 52.8597C75.8824 52.4693 75.6631 51.9398 75.6631 51.3878V38.3706L57.4558 20.1633H25.01Z"
+                      fill="#475161"
+                    />
+                    <path
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"
+                      d="M58.3162 16C58.8681 16.0005 59.3972 16.2201 59.7872 16.6106C60.1776 17.001 60.3978 17.5295 60.3978 18.0816V35.4286H77.7447C78.2968 35.4286 78.8254 35.6488 79.2158 36.0392C79.6071 36.4278 79.8264 36.9579 79.8264 37.5102C79.8264 38.0623 79.6071 38.5918 79.2167 38.9821C78.8263 39.3725 78.2968 39.5918 77.7447 39.5918H58.3162C57.7641 39.5918 57.2346 39.3725 56.8442 38.9821C56.4538 38.5918 56.2345 38.0623 56.2345 37.5102V18.0816C56.2345 17.5295 56.4538 17.0001 56.8442 16.6097C57.2346 16.2193 57.7641 16 58.3162 16Z"
+                      fill="#475161"
+                    />
+                  </svg>
+                  <h3>{fileName}</h3>
+                </>
+              )}
 
-        <div className="bg-white content-box">
-          <div className="border-[var(--border-color)] border-t-[1px] rounded-t-lg border-l-[1px] border-r-[1px] border-b-[1px] p-4">
-            <h2>Select Content Types</h2>
-          </div>
-          <div className="p-4 border-[var(--border-color)] border-l-[1px] border-r-[1px]">
-            {contentTypeResult?.content_types?.map(
-              (field: { options: any; title: string; uid: string }) =>
-                field.options.is_page && (
-                  <div className="form-check" key={field.uid}>
-                    <label className="form-check-label">
-                      <input
-                        type="radio"
-                        className="form-check-input"
-                        name="template"
-                        value={field.uid}
-                        checked={template === field.uid}
-                        onChange={() => setTemplate(field.uid)}
-                      />
-                      {field.title}
-                    </label>
-                  </div>
-                )
-            )}
-          </div>
-        </div>
+              {url && (
+                <>
+                  <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M24.4681 23.8298C24.2988 23.8298 24.1364 23.897 24.0167 24.0167C23.897 24.1364 23.8298 24.2988 23.8298 24.4681V75.5319C23.8298 75.8843 24.1157 76.1702 24.4681 76.1702H75.5319C75.7012 76.1702 75.8636 76.103 75.9833 75.9833C76.103 75.8636 76.1702 75.7012 76.1702 75.5319V58.4255C76.1702 57.9177 76.372 57.4306 76.7311 57.0715C77.0902 56.7124 77.5772 56.5106 78.0851 56.5106C78.593 56.5106 79.08 56.7124 79.4391 57.0715C79.7983 57.4306 80 57.9177 80 58.4255V75.5319C80 76.7169 79.5293 77.8534 78.6913 78.6913C77.8534 79.5293 76.7169 80 75.5319 80H24.4681C23.2831 80 22.1466 79.5293 21.3087 78.6913C20.4707 77.8534 20 76.7169 20 75.5319V24.4681C20 22.0017 22.0017 20 24.4681 20H41.5745C42.0823 20 42.5694 20.2017 42.9285 20.5609C43.2876 20.92 43.4894 21.407 43.4894 21.9149C43.4894 22.4228 43.2876 22.9098 42.9285 23.2689C42.5694 23.628 42.0823 23.8298 41.5745 23.8298H24.4681ZM56.5106 21.9149C56.5106 21.407 56.7124 20.92 57.0715 20.5609C57.4306 20.2017 57.9177 20 58.4255 20H75.537C78.0136 20 80 22.0068 80 24.4681V28.9362H76.1702V24.4681C76.1702 24.1106 75.8843 23.8298 75.537 23.8298H58.4255C57.9177 23.8298 57.4306 23.628 57.0715 23.2689C56.7124 22.9098 56.5106 22.4228 56.5106 21.9149ZM76.1702 28.9362V41.5745C76.1702 42.0823 76.372 42.5694 76.7311 42.9285C77.0902 43.2876 77.5772 43.4894 78.0851 43.4894C78.593 43.4894 79.08 43.2876 79.4391 42.9285C79.7983 42.5694 80 42.0823 80 41.5745V28.9362H76.1702Z" fill="#475161"/>
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M76.8851 23.1149C77.2437 23.4739 77.4451 23.9606 77.4451 24.4681C77.4451 24.9755 77.2437 25.4622 76.8851 25.8213L43.6936 59.0128C43.5183 59.2009 43.3069 59.3518 43.072 59.4565C42.8371 59.5611 42.5836 59.6174 42.3264 59.6219C42.0693 59.6265 41.8139 59.5792 41.5755 59.4829C41.3371 59.3866 41.1205 59.2432 40.9386 59.0614C40.7568 58.8795 40.6134 58.6629 40.5171 58.4245C40.4208 58.1861 40.3735 57.9307 40.3781 57.6736C40.3826 57.4164 40.4389 57.1629 40.5435 56.928C40.6482 56.6931 40.7991 56.4817 40.9872 56.3064L74.1787 23.1149C74.5378 22.7563 75.0245 22.5549 75.5319 22.5549C76.0394 22.5549 76.5261 22.7563 76.8851 23.1149Z" fill="#475161"/>
+                  </svg>
+                  <h3>{url}</h3>
+                </>
+              )}
+           
+          </span>
 
-        <div className="bg-white flex justify-content-end border-b-[1px] border-t-[1px] border-l-[1px] border-r-[1px] p-4 rounded-b-lg">
-          <button className="primary-button" type="button">
-            Cancel
-          </button>
-          <button
-            className="bg-[var(--blue-color)] primary-button active flex space-x-4"
-            disabled={!template || (!selectedFile && !url.trim()) || loading}
-            onClick={generateContent}
-            type="button"
-          >
-            {loading ? (
-              "Generating..."
-            ) : (
-              <>
-                <svg
-                  width="21"
-                  height="20"
-                  viewBox="0 0 21 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M12.6492 18.2645H6.27425M11.75 6.19402L1.25 16.694M18.5 12.2645V16.7645M20.75 14.5145H16.25M14.93 9.37477C15.7538 8.52615 16.2106 7.38752 16.2018 6.20488C16.193 5.02224 15.7193 3.89053 14.883 3.05425C14.0467 2.21797 12.915 1.74427 11.7324 1.73548C10.5497 1.72669 9.41112 2.18351 8.5625 3.00727L3.5 8.06977V14.4448H9.875L14.93 9.37477Z"
-                    stroke="white"
-                    stroke-width="1.5"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-                Generate Content
-              </>
-            )}
-          </button>
+          {(fileName && fileSize && ( 
+            <span className="w-1/2 flex items-center justify-end">
+              {fileSize} KB
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="ml-4"
+              >
+                <path
+                  fill-rule="evenodd"
+                  clip-rule="evenodd"
+                  d="M19.8442 6.65567C19.9439 6.75548 20 6.89077 20 7.03184C20 7.1729 19.9439 7.30819 19.8442 7.408L9.89657 17.3443C9.79665 17.444 9.66121 17.5 9.51999 17.5C9.37877 17.5 9.24332 17.444 9.1434 17.3443L4.16961 12.3762C4.11725 12.3274 4.07526 12.2687 4.04613 12.2034C4.01701 12.1381 4.00135 12.0676 4.00008 11.9961C3.99882 11.9246 4.01198 11.8536 4.03879 11.7874C4.06559 11.7211 4.10548 11.6609 4.15608 11.6103C4.20669 11.5598 4.26697 11.5199 4.33332 11.4932C4.39968 11.4664 4.47075 11.4532 4.54231 11.4545C4.61386 11.4558 4.68443 11.4714 4.7498 11.5005C4.81517 11.5296 4.874 11.5715 4.92279 11.6238L9.51999 16.2158L19.091 6.65567C19.1909 6.55599 19.3263 6.5 19.4676 6.5C19.6088 6.5 19.7442 6.55599 19.8442 6.65567Z"
+                  fill="#198754"
+                  stroke="#198754"
+                  stroke-width="2"
+                />
+              </svg>
+            </span>
+          ))}
         </div>
-      </div>
+      )}
+
+      {/* Uploaded Document and Url Details */}
+
+      {secondPage && (
+          <div className="mb-5">
+            <div className="bg-white content-box">
+              <div className="border-[var(--border-color)] border-t-[1px] rounded-t-lg border-l-[1px] border-r-[1px] border-b-[1px] p-4">
+                <h2>Select Content Types</h2>
+              </div>
+              <div className="p-4 border-[var(--border-color)] border-l-[1px] border-r-[1px]">
+                {contentTypeResult?.content_types?.map(
+                  (field: { options: any; title: string; uid: string }) =>
+                    field.options.is_page && (
+                      <div className="form-check" key={field.uid}>
+                        <label className="form-check-label">
+                          <input
+                            type="radio"
+                            className="form-check-input"
+                            name="template"
+                            value={field.uid}
+                            checked={template === field.uid}
+                            onChange={() => setTemplate(field.uid)}
+                          />
+                          {field.title}
+                        </label>
+                      </div>
+                    )
+                )}
+              </div>
+            </div>
+            <div className="bg-white flex justify-content-end border-b-[1px] border-t-[1px] border-l-[1px] border-r-[1px] p-4 rounded-b-lg">
+            <button className="primary-button" type="button" onClick={setCancel}>
+              Cancel
+            </button>
+            <button
+              className="bg-[var(--blue-color)] primary-button active flex space-x-4"
+              disabled={!template || (!selectedFile && !url.trim()) || loading}
+              onClick={generateContent}
+              type="button"
+            >
+              {loading ? (
+                "Generating..."
+              ) : (
+                <>
+                  <svg
+                    width="21"
+                    height="20"
+                    viewBox="0 0 21 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M12.6492 18.2645H6.27425M11.75 6.19402L1.25 16.694M18.5 12.2645V16.7645M20.75 14.5145H16.25M14.93 9.37477C15.7538 8.52615 16.2106 7.38752 16.2018 6.20488C16.193 5.02224 15.7193 3.89053 14.883 3.05425C14.0467 2.21797 12.915 1.74427 11.7324 1.73548C10.5497 1.72669 9.41112 2.18351 8.5625 3.00727L3.5 8.06977V14.4448H9.875L14.93 9.37477Z"
+                      stroke="white"
+                      stroke-width="1.5"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  Generate Content
+                </>
+              )}
+            </button>
+            </div>
+          </div>
+       )}
 
       {renderResult()}
     </div>
